@@ -38,7 +38,7 @@ The Sentinel Operations Center has converted SynPUFs into the SCDM format to dem
 
 
 <br><br>
-Continue reading about using the SCDM-formatted SynPUFs.
+Continue reading about using the SCDM-formatted SynPUFs in a [demonstration Sentinel CIDA package] (file10_demo.md).
 
 <br>
 <br>
