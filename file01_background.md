@@ -4,7 +4,7 @@
 This documentation provides resources to demonstrate the ability to execute the Sentinel Cohort Identification and Descriptive Analysis (CIDA) tool on standardized Medicare Claims Synthetic Public Use Files (SynPUFs). These resources include a demonstration Sentinel Statistical Analysis System (SAS) package, a standardized dataset made compatible to execute the tool, and detailed instructions on how to use it.  
 
 <br>
-##	BACKGROUND
+##	BACKGROUND  
 ###	WHAT ARE THE SENTINEL COMMON DATA MODEL AND THE SENTINEL DISTRIBUTED DATABASE?
 Sentinel uses a distributed data approach in which Data Partners maintain physical and operational control over electronic data in their existing environments. The distributed approach is achieved by using a standardized data structure referred to as the Sentinel Common Data Model (SCDM)<sup><a name=a1>[1](#f1)</a></sup>.  Data Partners transform their data locally according to the Common Data Model, which enables them to execute standardized computer programs that run identically at each Data Partner site. Data Partners are able to review the results of the queries before sending them back to the Sentinel Operations Center (SOC). Queries are distributed and results are returned through a secure portal in order to preserve privacy. The combined collection of datasets across all Data Partners is known as the Sentinel Distributed Database (SDD).  
 
