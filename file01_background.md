@@ -3,7 +3,6 @@
 ##	PURPOSE
 This documentation provides resources to demonstrate the ability to execute the Sentinel Cohort Identification and Descriptive Analysis (CIDA) tool on standardized Medicare Claims Synthetic Public Use Files (SynPUFs). These resources include a demonstration Sentinel Statistical Analysis System (SAS) package, a standardized dataset made compatible to execute the tool, and detailed instructions on how to use it.  
 
-<br>
 ##	BACKGROUND  
 
 ###	WHAT ARE THE SENTINEL COMMON DATA MODEL AND THE SENTINEL DISTRIBUTED DATABASE?
