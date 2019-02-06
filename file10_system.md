@@ -18,4 +18,4 @@ For CIDA to run successfully, you must have on your PC:
 *  User can optionally combine up to 20 subsamples to form one dataset; therefore, calculation of disk space is required before downloading the desired number of subsamples.  
 
 <br>
-Continue onto the Instructional Steps.
+\>>Continue on to the [Instructional Steps](.
