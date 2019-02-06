@@ -97,7 +97,8 @@ If you find any error, please contact the SOC at info@sentinelsystem.org.
 
 ![\Find what: error, find next](files/resources/image22.png)  
 
-The above “errors” are part of the program and are normal.  
+The above “errors” are part of the program and are normal.   
+ 
 26.	 If you find any error, please contact the SOC at info@sentinelsystem.org.  
 
 27.  Open folder demo\_mpl2r\_wp001\_nsdp\_v01, the results are contained in the folder msoc  
