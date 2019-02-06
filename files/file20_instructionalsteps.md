@@ -27,3 +27,5 @@ The following steps are for using the pre-parameterized CIDA package.
 16.	 In SAS file prepare_scdm.sas, edit the following parameters ONLY:<ul><li>%let inlib= point to the location of your downloaded datasets (for example, B:\CIDA).</li><li>%let outlib= point to the location where the SCDM-formatted SynPUFs will be saved (for example, B:\CIDA).</li><li>%let first_subsample= enter the minimum subsample number to include in the SCDM-formatted SynPUFs (for example, 1).</li><li>%let last_subsample= enter the maximum subsample number to include in the SCDM-formatted SynPUFs (for example, 3).<br>Note: If you are running on 1 subsample only, %let last_subsample= 1;</li><li>%let YN_Cleanup= to indicate whether to delete the raw subsamples from user library once the SCDM synpufs are created (for example, Y).</li></ul>  
 ![SAS example](files/resources/image09.png)  
 17.	 Save and run the program.
+![Save](files/resources/image10.png)   
+![RUn](files/resources/image11.png) 
