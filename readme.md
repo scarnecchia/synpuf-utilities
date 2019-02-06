@@ -13,4 +13,7 @@ The SOC has converted SynPUFs into the SCDM format to demonstrate the functional
 ## What do I need to run a query on SynPUFs data?  
 In order to run a query using Sentinel's reusable Modular Program tools on the SynPUFs, you will need to start with a CIDA package. You can find a the most recent version of CIDA [<b>here</b>](https://dev.sentinelsystem.org/projects/AD/repos/qrp/browse) and its accompanying documentation [<b>here</b>](https://dev.sentinelsystem.org/projects/SENTINEL/repos/sentinel-routine-querying-tool-documentation/browse).  
 
-The SOC has also provided a pre-parameterized version of the CIDA package for use on the SynPUFs which can be accessed [<b>here</b>](https://dev.sentinelsystem.org/projects/SYNPUF/repos/synpuf_cida_package/browse).
+The SOC has also provided a pre-parameterized version of the CIDA package for use on the SynPUFs which can be accessed [<b>here</b>](https://dev.sentinelsystem.org/projects/SYNPUF/repos/synpuf_cida_package/browse).  
+
+The SCDM-formatted SynPUFs can be found [<b>here</b>](https://dev.sentinelsystem.org/projects/SYNPUF/repos/synpuf_sas_datasets/browse). There are 20 subsamples of the SynPUFs dataset available for users which can be used individually or combined together to create a larger dataset. Each subsample consists of seven data tables containing information related to: health plan enrollment, member demographics, health care utilization (e.g., outpatient pharmacy dispensings and medical encounters, diagnoses, and procedures), and death.
+
