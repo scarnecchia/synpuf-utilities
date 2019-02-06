@@ -19,4 +19,4 @@ The <b>SCDM-formatted SynPUFs</b> can be found [<b>here</b>](https://dev.sentine
 
 The SOC has also provided the <b>translational code</b> used to transform the SynPUFs into the SCDM. This code, including lookupfiles, macros, and the sasprogram file, can be found [<b>here</b>](https://dev.sentinelsystem.org/projects/SYNPUF/repos/synpuf_translation_code/browse).  
 
->>[Continue on to the System Requirements for running a CIDA package](https://dev.sentinelsystem.org/projects/SYNPUF/repos/synpuf_user_documentation/browse/file10_demo.md)
+\>>[Continue on to the System Requirements for running a CIDA package](https://dev.sentinelsystem.org/projects/SYNPUF/repos/synpuf_user_documentation/browse/file10_demo.md)
