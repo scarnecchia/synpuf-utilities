@@ -17,5 +17,6 @@ The SOC has also provided a pre-parameterized version of the <b>CIDA package</b>
 
 The <b>SCDM-formatted SynPUFs</b> can be found [<b>here</b>](https://dev.sentinelsystem.org/projects/SYNPUF/repos/synpuf_sas_datasets/browse). There are 20 subsamples of the SynPUFs dataset available for users which can be used individually or combined together to create a larger dataset. Each subsample consists of seven data tables containing information related to: health plan enrollment, member demographics, health care utilization (i.e., outpatient pharmacy dispensings and medical encounters, diagnoses, and procedures), and death.  
 
-The SOC has also provided the <b>translational code</b> used to transform the SynPUFs into the SCDM. This code, including lookupfiles, macros, and the sasprogram file, can be found [<b>here</b>](https://dev.sentinelsystem.org/projects/SYNPUF/repos/synpuf_translation_code/browse).
+The SOC has also provided the <b>translational code</b> used to transform the SynPUFs into the SCDM. This code, including lookupfiles, macros, and the sasprogram file, can be found [<b>here</b>](https://dev.sentinelsystem.org/projects/SYNPUF/repos/synpuf_translation_code/browse).  
 
+>>[Continue on to the System Requirements for running a CIDA package](https://dev.sentinelsystem.org/projects/SYNPUF/repos/synpuf_user_documentation/browse/file10_demo.md)
