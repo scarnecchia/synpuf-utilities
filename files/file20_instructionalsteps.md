@@ -21,21 +21,9 @@ The following steps are for using the pre-parameterized CIDA package.
 12.  Repeat the above steps for downloading additional subsamples. Steps 13-18 include instructions on executing against 3 subsamples of SynPUFs. You can execute on any number of subsamples of your choice, including 1 subsample only.
 13.  Making sure all folders were successfully unzipped, you can now delete the zip files.  
 ![Delete zip](files/resources/image07.png)  
-14.	 Make sure that your final folder contains the following folder/files:
-*	 demo_mpl2r_wp001_nsdp_v01
-* 	death_1.sas7bdat – death\_n.sas7bdat
-* 	demographic\_1.sas7bdat – demographic\_n.sas7bdat
-*	 diagnosis\_1.sas7bdat – diagnosis\_n.sas7bdat
-* 	dispensing\_1.sas7bdat – dispensing\_n.sas7bdat
-* 	encounter\_1.sas7bdat – encounter\_n.sas7bdat
-* 	enrollment\_1.sas7bdat – enrollment\_n.sas7bdat
-* 	procedure\_1.sas7bdat – procedure\_n.sas7bdat  
+14.	 Make sure that your final folder contains the following folder/files: <ul><li>demo_mpl2r_wp001_nsdp_v01</li><li></li><li> death_1.sas7bdat – death\_n.sas7bdat</li><li>demographic\_1.sas7bdat – demographic\_n.sas7bdat</li><li>diagnosis\_1.sas7bdat – diagnosis\_n.sas7bdat</li><li>dispensing\_1.sas7bdat – dispensing\_n.sas7bdat</li><li>encounter\_1.sas7bdat – encounter\_n.sas7bdat</li><li>enrollment\_1.sas7bdat – enrollment\_n.sas7bdat</li><li>procedure\_1.sas7bdat – procedure\_n.sas7bdat</li></ul>  
 15.  Open folder demo_mpl2r\_wp001\_nsdp_v01 &#8594; open SAS file prepare\_scdm.sas.  
 ![Prepare.scdm.sas](files/resources/image08.png)  
-16.	 In SAS file prepare_scdm.sas, edit the following parameters ONLY:
-	%let inlib= point to the location of your downloaded datasets (for example, B:\CIDA).
-	%let outlib= point to the location where the SCDM-formatted SynPUFs will be saved (for example, B:\CIDA).
-	%let first_subsample= enter the minimum subsample number to include in the SCDM-formatted SynPUFs (for example, 1).
-	%let last_subsample= enter the maximum subsample number to include in the SCDM-formatted SynPUFs (for example, 3).
-Note: If you are running on 1 subsample only, %let last_subsample= 1;
-	%let YN_Cleanup= to indicate whether to delete the raw subsamples from user library once the SCDM synpufs are created (for example, Y).
+16.	 In SAS file prepare_scdm.sas, edit the following parameters ONLY:<ul><li>%let inlib= point to the location of your downloaded datasets (for example, B:\CIDA).</li><li>%let outlib= point to the location where the SCDM-formatted SynPUFs will be saved (for example, B:\CIDA).</li><li>%let first_subsample= enter the minimum subsample number to include in the SCDM-formatted SynPUFs (for example, 1).</li><li>%let last_subsample= enter the maximum subsample number to include in the SCDM-formatted SynPUFs (for example, 3).<br>Note: If you are running on 1 subsample only, %let last_subsample= 1;</li><li>%let YN_Cleanup= to indicate whether to delete the raw subsamples from user library once the SCDM synpufs are created (for example, Y).</li></ul>  
+![SAS example](files/resources/image09.png)  
+17.	 Save and run the program.
