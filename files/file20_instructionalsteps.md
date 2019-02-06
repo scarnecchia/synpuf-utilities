@@ -87,7 +87,7 @@ If you find any error, please contact the SOC at info@sentinelsystem.org.
 
 24.	 After the batch submit dialog closes, text (.log) files will appear in folders sasprogram and msoc.  
 
-![Files appearing in sasprograms folder](files/resources/image19.png)  
+![Files appearing in sasprograms folder](resources/image19.png)  
 
 ![Files appearing in msoc folder](resources/image20.png)
   
