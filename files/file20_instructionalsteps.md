@@ -28,4 +28,4 @@ The following steps are for using the pre-parameterized CIDA package.
 ![SAS example](files/resources/image09.png)  
 17.	 Save and run the program.
 ![Save](files/resources/image10.png)   
-![RUn](files/resources/image11.png) 
+![Run](files/resources/image11.png) 
