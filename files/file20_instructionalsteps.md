@@ -7,7 +7,7 @@ The following steps are for using the pre-parameterized CIDA package.
 
 3.	Create a folder on your local drive (making sure it has enough disk space). As an example, we created the folder CIDA on B drive.  
 
-![CIDA on B drive](files/resources/image01.png)  
+![CIDA on B drive](resources/image01.png)  
 
 4.  Navigate to the [<b>SynPUF CIDA package</b>](https://dev.sentinelsystem.org/projects/SYNPUF/repos/synpuf_cida_package/browse)  
 
