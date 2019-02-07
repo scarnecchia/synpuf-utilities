@@ -21,7 +21,7 @@ The following steps are for using the pre-parameterized CIDA package.
 
 6.  Save the downloaded demo_mpl2r_wp001_nsdp_v01.zip file to the folder you just created (for example, B:\CIDA).  
 
-![B:\CIDA\](resources/image03.png)  
+![Save download](resources/image03.png)  
 
 7.  Navigate to the [<b>SynPUF SAS datasets</b>](https://dev.sentinelsystem.org/projects/SYNPUF/repos/synpuf_sas_datasets/browse).  
 
