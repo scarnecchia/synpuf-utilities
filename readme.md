@@ -1,6 +1,6 @@
 # Welcome to the Medicare Claims Synthetic Public Use Files (SynPUFs) Repositories  
 
-In order to utilize Sentinel's reusable Modular Program tools, data must be transformed into the Sentinel Common Data Model (SCDM) and must pass a series of quality assurance checks. The Sentinel Operations Center (SOC) has transformed the SynPUFs into the SCDM and has made them available for public use with the Sentinel tools. 
+In order to utilize Sentinel's reusable Modular Program tools, data must be transformed into the Sentinel Common Data Model (SCDM)<sup><a name=a1>[1](#f1)</a></sup> and must pass a series of quality assurance checks. The Sentinel Operations Center (SOC) has transformed the SynPUFs into the SCDM and has made them available for public use with the Sentinel tools. 
 
 ## What are SynPUFs?  
 SynPUFs were created to allow interested parties to gain familiarity using Medicare claims data while protecting beneficiary privacy. These are synthetic claims datasets created by combining randomized information from various beneficiaries. Each record from the SynPUFs dataset contains extracted claims information from at least three unique beneficiaries. These records were further altered by changing variable values to provide additional deidentification from the beneficiaries.  
@@ -19,4 +19,10 @@ The <b>SCDM-formatted SynPUFs</b> can be found [<b>here</b>](https://dev.sentine
 
 The SOC has also provided the <b>translational code</b> used to transform the SynPUFs into the SCDM. This code, including lookupfiles, macros, and the sasprogram file, can be found [<b>here</b>](https://dev.sentinelsystem.org/projects/SYNPUF/repos/synpuf_translation_code/browse).  
 
-\>>[Continue on to the System Requirements for running a CIDA package](files/file10_system.md)
+\>>[Continue on to the System Requirements for running a CIDA package](files/file10_system.md)  
+
+<br>
+<br>
+
+______________________
+<a name="f1"></a> <sup>1</sup> https://www.sentinelinitiative.org/sentinel/data/distributed-database-common-data-model  
