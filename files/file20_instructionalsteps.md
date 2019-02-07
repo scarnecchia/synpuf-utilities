@@ -1,4 +1,6 @@
-## Instructional Steps  
+##	DEMONSTRATION SENTINEL CIDA PACKAGE    
+
+### Instructional Steps  
 The following steps are for using the pre-parameterized CIDA package. 
 
 1.	Review the SynPUFs [Technical Specification](https://dev.sentinelsystem.org/projects/SYNPUF/repos/synpuf_user_documentation/browse/Sentinel_Tech_Spec_SynPUF_to_SCDM_v1.0.pdf) before proceeding.  
