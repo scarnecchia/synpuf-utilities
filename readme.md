@@ -30,7 +30,8 @@ The Centers for Medicare and Medicaid Services (CMS) provide more detailed infor
 *  For more information, visit [<b>CMS.gov</b>](https://www.cms.gov/research-statistics-data-and-systems/downloadable-public-use-files/synpufs/index.html)
 
 <br>
-\>>[<b>Continue on to the System Requirements for running a CIDA package</b>](files/file10_system.md)  
+&#8594;[<b>Continue on to the System Requirements for running a CIDA package</b>](files/file10_system.md)  
+&#8594;[<b>Continue on to the Instructional Steps</b>](files/file20_instructionalsteps.md)
 
 <br>
 <br>
