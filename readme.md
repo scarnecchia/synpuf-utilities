@@ -1,4 +1,4 @@
-![logo](files/resources/logo.png]  
+![alt text](files/resources/logo.png)
 
 # Welcome to the Medicare Claims Synthetic Public Use Files (SynPUFs) Repositories  
 
