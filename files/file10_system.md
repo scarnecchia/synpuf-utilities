@@ -17,5 +17,5 @@ For CIDA to run successfully, you must have on your PC:
 *  Minimum disk space of 2.65GB (per subsample)
 *  User can optionally combine up to 20 subsamples to form one dataset; therefore, calculation of disk space is required before downloading the desired number of subsamples.  
 
-<br>
+
 >>[Continue on to the Instructional Steps](files/file20_instructionalsteps.md)
