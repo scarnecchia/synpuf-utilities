@@ -16,7 +16,7 @@ The SOC has converted SynPUFs into the SCDM format to demonstrate the functional
 <b> A CIDA Package  </b>
 In order to run a query using Sentinel's reusable routine querying tools on the SynPUFs, you will need to start with a CIDA package. 
 *  [<b>Current version of CIDA</b>](https://dev.sentinelsystem.org/projects/AD/repos/qrp/browse)  
-*  [<b>CIDA documentation</b>](https://dev.sentinelsystem.org/projects/SENTINEL/repos/sentinel-routine-querying-tool-documentation/browse).  
+*  [<b>CIDA documentation</b>](https://dev.sentinelsystem.org/projects/SENTINEL/repos/sentinel-routine-querying-tool-documentation/browse)  
 *  The SOC has also provided a pre-parameterized version of the CIDA package for use on the SynPUFs which can be accessed [<b>here</b>](https://dev.sentinelsystem.org/projects/SYNPUF/repos/synpuf_cida_package/browse).  
 
 <b> SCDM-Formatted SynPUFs  </b>
@@ -31,9 +31,9 @@ The Centers for Medicare and Medicaid Services (CMS) provide more detailed infor
 *  For more information, visit [<b>CMS.gov</b>](https://www.cms.gov/research-statistics-data-and-systems/downloadable-public-use-files/synpufs/index.html)
 
 <br>
-&#8594; [Continue to the System Requirements for Running a CIDA Package](https://dev.sentinelsystem.org/projects/SYNPUF/repos/synpuf_user_documentation/browse/files/file10_system.md) 
+&#8594; Continue to the [System Requirements for Running a CIDA Package](https://dev.sentinelsystem.org/projects/SYNPUF/repos/synpuf_user_documentation/browse/files/file10_system.md) 
 
-&#8594; [Continue to the Instructional Steps](files/file20_instructionalsteps.md)
+&#8594; Continue to the [Instructional Steps](files/file20_instructionalsteps.md)
 
 <br>
 <br>
