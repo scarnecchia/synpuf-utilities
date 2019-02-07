@@ -1,3 +1,5 @@
+![logo](files/resources/logo.png]  
+
 # Welcome to the Medicare Claims Synthetic Public Use Files (SynPUFs) Repositories  
 
 In order to utilize Sentinel's reusable Modular Program tools, data must be transformed into the Sentinel Common Data Model (SCDM)<sup><a name=a1>[1](#f1)</a></sup> and must pass a series of quality assurance checks. The Sentinel Operations Center (SOC) has transformed the SynPUFs into the SCDM and has made them available for public use with the Sentinel tools. 
