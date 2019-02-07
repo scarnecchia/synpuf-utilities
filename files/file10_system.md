@@ -1,4 +1,4 @@
-![logo](files/resources/logo.png)  
+![alt text](files/resources/logo.png)  
 
 ##	DEMONSTRATION SENTINEL CIDA PACKAGE  
 
