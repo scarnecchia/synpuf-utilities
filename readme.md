@@ -33,7 +33,7 @@ The Centers for Medicare and Medicaid Services (CMS) provide more detailed infor
 *  For more information, visit [<b>CMS.gov</b>](https://www.cms.gov/research-statistics-data-and-systems/downloadable-public-use-files/synpufs/index.html)
 
 <br>
-&#8594; Continue to the [System Requirements](https://dev.sentinelsystem.org/projects/SYNPUF/repos/synpuf_user_documentation/browse/files/file10_system.md) 
+&#8594; Continue to the [System Requirements](files/file10_system.md) 
 
 &#8594; Continue to the [Instructional Steps](files/file20_instructionalsteps.md)
 
