@@ -35,7 +35,7 @@ The Centers for Medicare and Medicaid Services (CMS) provide more detailed infor
 <br>
 &#8594; Continue to the [System Requirements](files/file10_system.md) 
 
-&#8594; Continue to the [Instructional Steps](files/file20_instructionalsteps.md)
+&#8594; Continue to the [<b>Instructional Steps</b>](files/file20_instructionalsteps.md)
 
 <br>
 <br>
