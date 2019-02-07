@@ -1,3 +1,5 @@
+![logo](files/resources/logo.png)  
+
 ##	DEMONSTRATION SENTINEL CIDA PACKAGE    
 
 ### Instructional Steps  

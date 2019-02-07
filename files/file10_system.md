@@ -1,3 +1,5 @@
+![logo](files/resources/logo.png)  
+
 ##	DEMONSTRATION SENTINEL CIDA PACKAGE  
 
 A demonstration Sentinel CIDA package was developed to demonstrate the ability to execute the CIDA tool on SCDM-formatted SynPUFs datasets. Currently, the data available for the SCDM-formatted SynPUFs is for dates of service from January 1, 2008 to December 31, 2010. The version of the CIDA tool used is version 5.3.1. The demonstration package used a retrospective new-user cohort design.  
