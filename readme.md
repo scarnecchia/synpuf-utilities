@@ -4,9 +4,11 @@
 
 Sentinel has made available the [<b>CMS 2008-2010 Data Entrepreneurs’ Synthetic Public Use Files (SynPUFs)</b>](https://www.cms.gov/Research-Statistics-Data-and-Systems/Downloadable-Public-Use-Files/SynPUFs/index.html) in the Sentinel Common Data Model (SCDM) format.  
 
-The CMS files contain data from 2008-2010 and are available in the form of 20 mutually exclusive datasets which together make up a 5% sample of the entire CMS databased from 2008-2010. Each of the 20 datasets contains about 110,000 members. The intended use of these data in SCDM format is to generate familiarity with the CIDA tool and its capabilities, and to allow for methodological expansion.  
+The CMS SynPUFs contain data from 2008-2010 and are available in the form of 20 mutually exclusive datasets which together make up a 5% sample of the entire CMS database from 2008-2010. Each of the 20 datasets contains about 110,000 members. The intended use of these data in SCDM format is to generate familiarity with the CIDA tool and its capabilities, and to allow for methodological expansion.  
 
 The SynPUFs datasets in the SCDM format are available in the form of SAS datasets, and the CIDA tools are available as SAS programs. In order to access the SCDM-formatted datasets and the CIDA tools, users must have SAS version 9.3 or higher as well as at least 2.65GB of disk space per dataset.  
+
+### Using SCDM-Formatted SynPUFs  
 
 The 20 SCDM-formatted datasets can be found [<b>here</b>](https://dev.sentinelsystem.org/projects/SYNPUF/repos/synpuf_sas_datasets/browse).  
 *  These datasets have undergone Quality Assurance (QA) testing. The current QA program can be access [<b>here</b>](https://dev.sentinelsystem.org/projects/QA/repos/qa_package/browse).  
