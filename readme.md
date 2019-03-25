@@ -13,12 +13,12 @@ The SynPUFs datasets in the SCDM format are available in the form of SAS dataset
 The 20 SCDM-formatted datasets can be found [<b>here</b>](https://dev.sentinelsystem.org/projects/SYNPUF/repos/synpuf_sas_datasets/browse).  
 *  These datasets have undergone Quality Assurance (QA) testing. The current QA program can be access [<b>here</b>](https://dev.sentinelsystem.org/projects/QA/repos/qa_package/browse).  
 
-The instructions to aggregate datasets and run the CIDA package can be found here. 
+The instructions to aggregate datasets and run the CIDA package can be found [here](https://dev.sentinelsystem.org/projects/SYNPUF/repos/synpuf_demo_package/browse). 
 
-SOC has provided a fully filled in example package on CIDA version 5.3.1 which can be found [here](https://dev.sentinelsystem.org/projects/SYNPUF/repos/synpuf_demo_package/browse). 
+SOC has provided a demonstration package on CIDA version 5.3.1 with all the parameters filled in which can be found [here](https://dev.sentinelsystem.org/projects/SYNPUF/repos/synpuf_demo_package/browse). 
 *  This package is based off a Sentinel level 2 request that used Propensity Score Matching to assess the risk of angioedema among new angiotensin-converting enzyme (ACE) inhibitors users compared to beta blocker users.  
 
-SOC has also run this package, and the results can be found on the Sentinel website [<b>here</b>](https://www.sentinelinitiative.org/sentinel/surveillance-tools/software-toolkits/Medicare-SynPUFs-in-SCDM).
+SOC has also run this package on two combined SynPUFs datasets, and the results can be found on the Sentinel website [<b>here</b>](https://www.sentinelinitiative.org/sentinel/surveillance-tools/software-toolkits/Medicare-SynPUFs-in-SCDM).
 
 If you would like to parameterize your own CIDA package, the most recent version of CIDA can be found [</b>here</b>](https://dev.sentinelsystem.org/projects/AD/repos/qrp/browse), with accompanying documentation [<b>here</b>](https://dev.sentinelsystem.org/projects/SENTINEL/repos/sentinel-routine-querying-tool-documentation/browse).
 
