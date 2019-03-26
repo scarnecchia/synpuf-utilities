@@ -20,7 +20,7 @@ SOC has provided a demonstration package on CIDA version 5.3.1 with all the para
 
 SOC has also run the demonstration CIDA package on two combined SynPUFs datasets, and the results can be found on the [<b>Sentinel website</b>](https://www.sentinelinitiative.org/sentinel/surveillance-tools/software-toolkits/Medicare-SynPUFs-in-SCDM).
 
-If you would like to parameterize your own CIDA package, navigate to the most recent version of  [</b>CIDA</b>](https://dev.sentinelsystem.org/projects/AD/repos/qrp/browse) and its [<b>accompanying documentation</b>](https://dev.sentinelsystem.org/projects/SENTINEL/repos/sentinel-routine-querying-tool-documentation/browse).
+If you would like to parameterize your own CIDA package, navigate to the most recent version of  [<b>CIDA</b>](https://dev.sentinelsystem.org/projects/AD/repos/qrp/browse) and its [<b>accompanying documentation</b>](https://dev.sentinelsystem.org/projects/SENTINEL/repos/sentinel-routine-querying-tool-documentation/browse).
 
 ### Quick Links
 *  [SynPUFs SAS Datasets](https://dev.sentinelsystem.org/projects/SYNPUF/repos/synpuf_sas_datasets/browse)
