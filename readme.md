@@ -11,7 +11,7 @@ The SynPUFs datasets in the SCDM format are available in the form of SAS dataset
 ### Using SCDM-Formatted SynPUFs  
 
 The 20 SCDM-formatted datasets can be found [<b>here</b>](https://dev.sentinelsystem.org/projects/SYNPUF/repos/synpuf_sas_datasets/browse).  
-*  These datasets have undergone Sentinel's rigorous Quality Assurance (QA) testing. To view Sentinel's current QA program, navigate to the [<b>QA Package Repository</b>](https://dev.sentinelsystem.org/projects/QA/repos/qa_package/browse).  
+*  These datasets have undergone Sentinel's rigorous Quality Assurance (QA) testing. For more information on Sentinel's QA process and to view Sentinel's current QA program, navigate to the [<b>QA Package Repository</b>](https://dev.sentinelsystem.org/projects/QA/repos/qa_package/browse).  
 
 Users can run a CIDA package on one SCDM-formatted SynPUFs dataset, or users can combine multiple datasets using a SAS program developed by the Sentinel Operations Center (SOC). The instructions to aggregate datasets and run the CIDA package can be found [<b>here</b>](https://dev.sentinelsystem.org/projects/SYNPUF/repos/synpuf_demo_package/browse). 
 
