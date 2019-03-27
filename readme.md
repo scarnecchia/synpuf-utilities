@@ -25,4 +25,5 @@ If you would like to parameterize your own CIDA package, navigate to the most re
 *  [SynPUFs SAS Datasets](https://dev.sentinelsystem.org/projects/SYNPUF/repos/synpuf_sas_datasets/browse)
 *  [SynPUFs Demonstrational Sentinel CIDA Package](https://dev.sentinelsystem.org/projects/SYNPUF/repos/synpuf_demo_package/browse)
 *  [SynPUFs Demonstration Modular Program Report](https://www.sentinelinitiative.org/sentinel/surveillance-tools/software-toolkits/Medicare-SynPUFs-in-SCDM)
+*  [SynPUFs Translational Code](https://dev.sentinelsystem.org/projects/SYNPUF/repos/synpuf_overview/browse/files/translational_code)
 
