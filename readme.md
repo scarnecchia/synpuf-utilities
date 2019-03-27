@@ -1,6 +1,6 @@
 ![alt text](files/resources/logo.png)
 
-# Welcome to Sentinel's SynPUFs Repositories 
+# Welcome to Sentinel's SynPUFs Software Toolkit 
 
 Sentinel has made available the [<b>CMS 2008-2010 Data Entrepreneurs’ Synthetic Public Use Files (SynPUFs)</b>](https://www.cms.gov/Research-Statistics-Data-and-Systems/Downloadable-Public-Use-Files/SynPUFs/index.html) in the Sentinel Common Data Model (SCDM) format. This transformation of data allows for the running of Sentinel's Routine Querying System tools, including the Cohort Identification and Descriptive Analysis (CIDA) tool, on the SynPUFs data. The CMS SynPUFs are available in the form of 20 mutually exclusive datasets, which together make up a 5% sample of the entire CMS database from 2008-2010. Each of the 20 datasets contains about 110,000 members. The intended use of these data in SCDM format is to generate familiarity with the CIDA tool and its capabilities and to allow for methodological expansion.  
 
