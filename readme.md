@@ -13,7 +13,7 @@ The SynPUFs datasets in the SCDM format are available in the form of SAS dataset
 
 The 20 SCDM-formatted datasets can be found on the [Sentinel website](https://www.sentinelinitiative.org/methods-data-tools/software-packages-toolkits/medicare-claims-synthetic-public-use-files-sentinel-0)
 
-Alternatively, download all 20 subsamples by using the following command line script:
+Alternatively, Linux users may download all 20 subsamples by using the following command line script:
 
 ```bash
 for num in {1..20}; do
@@ -47,10 +47,10 @@ A technical specification and data dictionary for descriptive statistics are ava
 
 ## Quick Links
 
-- [SynPUFs SAS Datasets](https://dev.sentinelsystem.org/projects/SYNPUF/repos/synpuf_sas_datasets/browse)
+- [SynPUFs SAS Datasets](https://www.sentinelinitiative.org/methods-data-tools/software-packages-toolkits/medicare-claims-synthetic-public-use-files-sentinel-0)
 - [SynPUFs Demonstrational Sentinel CIDA Package](https://dev.sentinelsystem.org/projects/SYNPUF/repos/synpuf_demo_package/browse)
 - [SynPUFs Example Sentinel Modular Program Report](https://www.sentinelinitiative.org/sentinel/surveillance-tools/software-toolkits/Medicare-SynPUFs-in-SCDM)
-- [SynPUFs Translational Code](https://dev.sentinelsystem.org/projects/SYNPUF/repos/synpuf_overview/browse/files/translational_code)
+- [SynPUFs Translational Code](https://dev.sentinelsystem.org/projects/SYNPUF/repos/synpuf_overview/browse/translational_code)
 
 ______________________
 <a name="f1"></a> <sup>1</sup> https://www.sentinelinitiative.org/sentinel/data/distributed-database-common-data-model
