@@ -1,4 +1,4 @@
-![logo](resources/logo.png)
+![Sentinel Logo](https://dev.sentinelsystem.org/projects/AP/repos/sentinel-analytic-packages/raw/resources/logo.png?at=refs%2Fheads%2Fmaster)
 
 # Welcome to Sentinel's SynPUFs Software Toolkit
 
