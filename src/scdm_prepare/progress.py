@@ -1,8 +1,32 @@
 """Progress reporting for pipeline stages using rich.progress."""
 
 from contextlib import contextmanager
+from typing import Protocol
 
 from rich.progress import Progress
+
+
+class ProgressTracker(Protocol):
+    """Protocol for progress tracker objects.
+
+    Defines the interface required by pipeline functions for progress reporting.
+    """
+
+    def update_description(self, description: str) -> None:
+        """Update the description of the progress task.
+
+        Args:
+            description: New description (e.g., current filename or table name)
+        """
+        ...
+
+    def advance(self, amount: int = 1) -> None:
+        """Advance the progress bar.
+
+        Args:
+            amount: Number of units to advance (default: 1)
+        """
+        ...
 
 
 class PipelineProgress:

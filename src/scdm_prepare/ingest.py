@@ -1,9 +1,11 @@
 import re
 from pathlib import Path
+from typing import Optional
 
 import polars as pl
 import pyreadstat
 
+from scdm_prepare.progress import ProgressTracker
 from scdm_prepare.schema import TABLES
 
 
@@ -184,7 +186,7 @@ def ingest_all(
     output_dir: Path | str,
     file_ext: str = ".sas7bdat",
     chunk_size: int = 10000,
-    progress=None,
+    progress: Optional[ProgressTracker] = None,
 ) -> None:
     """Ingest all 9 table types for given subsamples to temp parquet.
 
@@ -197,6 +199,8 @@ def ingest_all(
         progress: Optional progress tracker with update_description() and advance()
     """
     for table_name in TABLES.keys():
+        if progress:
+            progress.update_description(f"Ingesting {table_name}")
         ingest_table(input_dir, table_name, subsamples, output_dir, file_ext, chunk_size)
         if progress:
             progress.advance()

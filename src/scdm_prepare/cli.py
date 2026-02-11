@@ -115,13 +115,16 @@ def main(
 
         # 3. Transform (with per-table progress)
         con = duckdb.connect()
-        build_crosswalks(con, str(temp_dir))
-        with progress.transform_tracker(total_tables=len(TABLES)) as tracker:
-            assemble_tables(con, str(temp_dir), progress=tracker)
+        try:
+            build_crosswalks(con, str(temp_dir))
+            with progress.transform_tracker(total_tables=len(TABLES)) as tracker:
+                assemble_tables(con, str(temp_dir), progress=tracker)
 
-        # 4. Export (with per-table progress)
-        with progress.export_tracker(total_tables=len(TABLES)) as tracker:
-            export_all(con, list(TABLES.keys()), str(output_dir), fmt.value, progress=tracker)
+            # 4. Export (with per-table progress)
+            with progress.export_tracker(total_tables=len(TABLES)) as tracker:
+                export_all(con, list(TABLES.keys()), str(output_dir), fmt.value, progress=tracker)
+        finally:
+            con.close()
 
         # 5. Cleanup temp on success
         shutil.rmtree(temp_dir)

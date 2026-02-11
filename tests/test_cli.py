@@ -3,7 +3,6 @@
 import tempfile
 from pathlib import Path
 
-import pytest
 from typer.testing import CliRunner
 
 from scdm_prepare.cli import app
@@ -162,10 +161,9 @@ class TestCLIErrorHandling:
                 )
                 # Should fail due to corrupt file
                 assert result.exit_code != 0
-                # Error message should mention either the "Failed to read" message or include "Temp files preserved"
-                # which indicates the error was caught and wrapped
-                full_output = result.stdout + "\n" + (result.stderr if hasattr(result, "stderr") else "")
-                assert "Temp files preserved" in full_output or result.exit_code == 1
+                # Error message should include both "Failed to read" and the filename
+                assert "Failed to read" in result.output
+                assert ".sas7bdat" in result.output
 
 
 class TestCLIProgressReporting:
@@ -218,7 +216,21 @@ class TestCLICleanup:
         """AC10.2: Temp directory preserved on failure."""
         with tempfile.TemporaryDirectory() as input_dir:
             with tempfile.TemporaryDirectory() as output_dir:
-                # Create empty input dir (no valid subsamples)
+                from scdm_prepare.schema import TABLES
+                import polars as pl
+
+                # Create parquet files for all table types for subsample 1
+                # but corrupt the first one so ingestion fails partway through
+                input_path = Path(input_dir)
+                for i, table_name in enumerate(TABLES.keys()):
+                    if i == 0:
+                        # First table: write corrupt data to trigger failure during ingestion
+                        (input_path / f"{table_name}_1.parquet").write_bytes(b"corrupt parquet data")
+                    else:
+                        # Other tables: write valid dummy parquet files
+                        df = pl.DataFrame({"col": [1, 2, 3]})
+                        df.write_parquet(str(input_path / f"{table_name}_1.parquet"))
+
                 result = runner.invoke(
                     app,
                     [
@@ -228,9 +240,15 @@ class TestCLICleanup:
                         output_dir,
                         "--format",
                         "parquet",
+                        "--file-ext",
+                        ".parquet",
                     ],
                 )
+                # Should fail due to corrupt first file
                 assert result.exit_code != 0
+                # Temp directory should exist after failure
+                temp_dir = Path(output_dir) / "_temp"
+                assert temp_dir.exists()
 
 
 class TestCleanTempFlag:
