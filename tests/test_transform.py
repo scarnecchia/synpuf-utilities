@@ -3,6 +3,7 @@ from pathlib import Path
 
 import duckdb
 import polars as pl
+import pytest
 
 from scdm_prepare.transform import build_crosswalks, get_crosswalk
 
@@ -235,6 +236,17 @@ class TestCrosswalkGeneration:
             assert "facilityid_crosswalk" in table_names, "facilityid_crosswalk not created"
 
             con.close()
+
+
+class TestGetCrosswalkValidation:
+    """Tests for get_crosswalk() input validation."""
+
+    def test_get_crosswalk_rejects_unknown_name(self):
+        """ValueError raised when crosswalk_name is not a known crosswalk."""
+        con = duckdb.connect(":memory:")
+        with pytest.raises(ValueError, match="unknown crosswalk"):
+            get_crosswalk(con, "not_a_real_crosswalk")
+        con.close()
 
 
 class TestCrosswalkEdgeCases:
