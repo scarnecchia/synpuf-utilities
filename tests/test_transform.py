@@ -66,6 +66,114 @@ def _create_minimal_fixtures(tmpdir_path: Path) -> None:
             df.write_parquet(str(tmpdir_path / f"{table_name}_1.parquet"))
 
 
+def _create_fixture_data(table_name: str) -> dict:
+    """Create minimal source data for any table type.
+
+    Used by parametrized tests to generate fixture data for column/order/sort testing.
+
+    Args:
+        table_name: Name of the table to create data for
+
+    Returns:
+        Dictionary suitable for pl.DataFrame construction
+    """
+    # Common patient and encounter setup
+    base_data = {
+        "dispensing": {
+            "PatID": ["P1", "P2"],
+            "ProviderID": ["ORIG_PR1", "ORIG_PR2"],
+            "RxDate": [None, None],
+            "Rx": ["RX001", "RX002"],
+            "Rx_CodeType": ["code1", "code1"],
+            "RxSup": [30, 60],
+            "RxAmt": [100, 200],
+            "samplenum": [1, 1],
+        },
+        "procedure": {
+            "PatID": ["P1", "P2"],
+            "EncounterID": ["E1", "E2"],
+            "ADate": [None, None],
+            "ProviderID": ["Pr1", "Pr1"],
+            "EncType": ["I", "O"],
+            "PX": ["PX001", "PX002"],
+            "PX_CodeType": ["code1", "code1"],
+            "OrigPX": ["PX001", "PX002"],
+            "samplenum": [1, 1],
+        },
+        "death": {
+            "PatID": ["P1", "P2"],
+            "DeathDt": [None, None],
+            "DtImpute": ["N", "N"],
+            "Source": ["SRC1", "SRC2"],
+            "Confidence": [1, 2],
+            "samplenum": [1, 1],
+        },
+        "demographic": {
+            "PatID": ["P1", "P2"],
+            "Birth_Date": [None, None],
+            "Sex": ["M", "F"],
+            "Hispanic": ["N", "Y"],
+            "Race": ["W", "B"],
+            "PostalCode": ["12345", "54321"],
+            "PostalCode_Date": [None, None],
+            "ImputedRace": ["N", "N"],
+            "ImputedHispanic": ["N", "N"],
+            "samplenum": [1, 1],
+        },
+        "enrollment": {
+            "PatID": ["P1", "P2"],
+            "Enr_Start": [None, None],
+            "Enr_End": [None, None],
+            "MedCov": ["Y", "N"],
+            "DrugCov": ["Y", "Y"],
+            "Chart": ["Y", "N"],
+            "PlanType": ["HMO", "PPO"],
+            "PayerType": ["Medicaid", "Medicare"],
+            "samplenum": [1, 1],
+        },
+        "encounter": {
+            "PatID": ["P1", "P2"],
+            "EncounterID": ["E1", "E2"],
+            "ADate": [None, None],
+            "DDate": [None, None],
+            "EncType": ["I", "O"],
+            "FacilityID": ["F1", "F2"],
+            "Discharge_Disposition": ["home", "home"],
+            "Discharge_Status": [1, 1],
+            "DRG": [1, 2],
+            "DRG_Type": ["I", "I"],
+            "Admitting_Source": ["ER", "OP"],
+            "samplenum": [1, 1],
+        },
+        "diagnosis": {
+            "PatID": ["P1", "P2"],
+            "EncounterID": ["E1", "E2"],
+            "ADate": [None, None],
+            "ProviderID": ["Pr1", "Pr1"],
+            "EncType": ["I", "O"],
+            "DX": ["DX001", "DX002"],
+            "Dx_Codetype": ["ICD9CM", "ICD9CM"],
+            "OrigDX": ["DX001", "DX002"],
+            "PDX": ["Y", "N"],
+            "PAdmit": ["Y", "N"],
+            "samplenum": [1, 1],
+        },
+        "provider": {
+            "ProviderID": ["Pr1", "Pr2"],
+            "Specialty": ["MD", "RN"],
+            "Specialty_CodeType": ["code1", "code1"],
+            "samplenum": [1, 1],
+        },
+        "facility": {
+            "FacilityID": ["F1", "F2"],
+            "Facility_Location": ["loc1", "loc2"],
+            "samplenum": [1, 1],
+        },
+    }
+
+    return base_data.get(table_name, {})
+
+
 class TestCrosswalkGeneration:
     """Tests for crosswalk generation functions."""
 
@@ -1012,6 +1120,74 @@ class TestTableAssembly:
 
             con.close()
 
+    @pytest.mark.parametrize("table_name", [
+        "enrollment", "demographic", "dispensing", "encounter",
+        "diagnosis", "procedure", "death", "provider", "facility"
+    ])
+    def test_table_columns(self, table_name):
+        """AC4.1: All tables contain exactly the expected columns (parametrized)."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+
+            # Create fixture data for this table
+            table_data = _create_fixture_data(table_name)
+            df = pl.DataFrame(table_data)
+            df.write_parquet(str(tmpdir_path / f"{table_name}_1.parquet"))
+
+            # Create minimal fixtures for other required tables
+            _create_minimal_fixtures(tmpdir_path)
+
+            con = duckdb.connect(":memory:")
+            build_crosswalks(con, tmpdir_path)
+            assemble_tables(con, tmpdir_path)
+            synthesise_tables(con)
+
+            # Retrieve table
+            result = con.sql(f"SELECT * FROM {table_name}").pl()
+
+            # Check columns match expected
+            expected_cols = set(TABLES[table_name].columns)
+            actual_cols = set(result.columns)
+            assert actual_cols == expected_cols, (
+                f"{table_name}: Expected columns {expected_cols}, got {actual_cols}"
+            )
+
+            con.close()
+
+    @pytest.mark.parametrize("table_name", [
+        "enrollment", "demographic", "dispensing", "encounter",
+        "diagnosis", "procedure", "death", "provider", "facility"
+    ])
+    def test_table_column_order(self, table_name):
+        """AC4.2: All tables have correct column order (parametrized)."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+
+            # Create fixture data for this table
+            table_data = _create_fixture_data(table_name)
+            df = pl.DataFrame(table_data)
+            df.write_parquet(str(tmpdir_path / f"{table_name}_1.parquet"))
+
+            # Create minimal fixtures for other required tables
+            _create_minimal_fixtures(tmpdir_path)
+
+            con = duckdb.connect(":memory:")
+            build_crosswalks(con, tmpdir_path)
+            assemble_tables(con, tmpdir_path)
+            synthesise_tables(con)
+
+            # Retrieve table
+            result = con.sql(f"SELECT * FROM {table_name}").pl()
+
+            # Check column order
+            expected_order = list(TABLES[table_name].columns)
+            actual_order = result.columns
+            assert actual_order == expected_order, (
+                f"{table_name}: Column order mismatch. Expected {expected_order}, got {actual_order}"
+            )
+
+            con.close()
+
 
 class TestTableSynthesis:
     """Tests for Provider and Facility table synthesis."""
@@ -1199,5 +1375,154 @@ class TestTableSynthesis:
             assert all(
                 facility_ids[i] <= facility_ids[i + 1] for i in range(len(facility_ids) - 1)
             ), "FacilityID not sorted"
+
+            con.close()
+
+
+class TestTableSortOrder:
+    """Parametrized tests for table sort order (AC5.1)."""
+
+    @pytest.mark.parametrize("table_name", [
+        "enrollment", "demographic", "dispensing", "encounter",
+        "diagnosis", "procedure", "death", "provider", "facility"
+    ])
+    def test_table_sort_order(self, table_name):
+        """AC5.1: All tables are sorted according to their sort_keys."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+
+            # First, create demographic with specific PatIDs to control the crosswalk
+            # This ensures consistent ID mapping for join operations
+            demographic_data = {
+                "PatID": ["P3", "P1", "P2"],  # Original IDs in non-sorted order
+                "Birth_Date": [None] * 3,
+                "Sex": ["M", "F", "M"],
+                "Hispanic": ["N", "Y", "N"],
+                "Race": ["W", "B", "A"],
+                "PostalCode": ["12345", "54321", "11111"],
+                "PostalCode_Date": [None] * 3,
+                "ImputedRace": ["N"] * 3,
+                "ImputedHispanic": ["N"] * 3,
+                "samplenum": [1, 1, 1],
+            }
+            df_demo = pl.DataFrame(demographic_data)
+            df_demo.write_parquet(str(tmpdir_path / "demographic_1.parquet"))
+
+            # Create fixture data with multiple rows in non-sorted order
+            # PatIDs refer to the original IDs from demographic
+            if table_name == "dispensing":
+                data = {
+                    "PatID": ["P3", "P1", "P2"],
+                    "ProviderID": ["PR1", "PR2", "PR3"],
+                    "RxDate": [None, None, None],
+                    "Rx": ["RX001", "RX002", "RX003"],
+                    "Rx_CodeType": ["code1"] * 3,
+                    "RxSup": [30, 60, 90],
+                    "RxAmt": [100, 200, 300],
+                    "samplenum": [1, 1, 1],
+                }
+            elif table_name == "encounter":
+                data = {
+                    "PatID": ["P3", "P1", "P2"],
+                    "EncounterID": ["E1", "E2", "E3"],
+                    "ADate": [None, None, None],
+                    "DDate": [None, None, None],
+                    "EncType": ["I", "O", "I"],
+                    "FacilityID": ["F1", "F2", "F3"],
+                    "Discharge_Disposition": ["home"] * 3,
+                    "Discharge_Status": [1, 1, 1],
+                    "DRG": [1, 2, 3],
+                    "DRG_Type": ["I"] * 3,
+                    "Admitting_Source": ["ER", "OP", "ER"],
+                    "samplenum": [1, 1, 1],
+                }
+            elif table_name == "diagnosis":
+                data = {
+                    "PatID": ["P3", "P1", "P2"],
+                    "EncounterID": ["E1", "E2", "E3"],
+                    "ADate": [None, None, None],
+                    "ProviderID": ["Pr1"] * 3,
+                    "EncType": ["I", "O", "I"],
+                    "DX": ["DX001", "DX002", "DX003"],
+                    "Dx_Codetype": ["ICD9CM"] * 3,
+                    "OrigDX": ["DX001", "DX002", "DX003"],
+                    "PDX": ["Y", "N", "Y"],
+                    "PAdmit": ["Y", "N", "Y"],
+                    "samplenum": [1, 1, 1],
+                }
+            elif table_name == "procedure":
+                data = {
+                    "PatID": ["P3", "P1", "P2"],
+                    "EncounterID": ["E1", "E2", "E3"],
+                    "ADate": [None, None, None],
+                    "ProviderID": ["Pr1"] * 3,
+                    "EncType": ["I", "O", "I"],
+                    "PX": ["PX001", "PX002", "PX003"],
+                    "PX_CodeType": ["code1"] * 3,
+                    "OrigPX": ["PX001", "PX002", "PX003"],
+                    "samplenum": [1, 1, 1],
+                }
+            elif table_name == "death":
+                data = {
+                    "PatID": ["P3", "P1", "P2"],
+                    "DeathDt": [None, None, None],
+                    "DtImpute": ["N"] * 3,
+                    "Source": ["SRC1", "SRC2", "SRC3"],
+                    "Confidence": [1, 2, 3],
+                    "samplenum": [1, 1, 1],
+                }
+            elif table_name == "demographic":
+                # Use already created demographic above
+                data = None
+            elif table_name == "enrollment":
+                data = {
+                    "PatID": ["P3", "P1", "P2"],
+                    "Enr_Start": [None] * 3,
+                    "Enr_End": [None] * 3,
+                    "MedCov": ["Y", "N", "Y"],
+                    "DrugCov": ["Y"] * 3,
+                    "Chart": ["Y", "N", "Y"],
+                    "PlanType": ["HMO", "PPO", "HMO"],
+                    "PayerType": ["Medicaid", "Medicare", "Medicaid"],
+                    "samplenum": [1, 1, 1],
+                }
+            elif table_name == "provider":
+                data = {
+                    "ProviderID": ["Pr1", "Pr3", "Pr2"],  # Non-sorted order
+                    "Specialty": ["MD", "RN", "PA"],
+                    "Specialty_CodeType": ["code1"] * 3,
+                    "samplenum": [1, 1, 1],
+                }
+            elif table_name == "facility":
+                data = {
+                    "FacilityID": ["F1", "F3", "F2"],  # Non-sorted order
+                    "Facility_Location": ["loc1", "loc3", "loc2"],
+                    "samplenum": [1, 1, 1],
+                }
+
+            if data is not None:
+                df = pl.DataFrame(data)
+                df.write_parquet(str(tmpdir_path / f"{table_name}_1.parquet"))
+
+            # Create minimal fixtures for other tables (will skip existing demographic)
+            _create_minimal_fixtures(tmpdir_path)
+
+            con = duckdb.connect(":memory:")
+            build_crosswalks(con, tmpdir_path)
+            assemble_tables(con, tmpdir_path)
+            synthesise_tables(con)
+
+            # Retrieve table
+            result = con.sql(f"SELECT * FROM {table_name}").pl()
+
+            # Check sort order by examining the first sort key column
+            sort_keys = TABLES[table_name].sort_keys
+            if sort_keys:
+                first_sort_key = sort_keys[0]
+                values = result[first_sort_key].to_list()
+                # Values should be in sorted order
+                assert values == sorted(values), (
+                    f"{table_name}: {first_sort_key} not sorted. Got {values}, expected {sorted(values)}"
+                )
 
             con.close()

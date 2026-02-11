@@ -169,8 +169,8 @@ class TestCLIErrorHandling:
 class TestCLIProgressReporting:
     """Tests for AC9.1, AC9.2 - progress reporting."""
 
-    def test_ac91_ac92_progress_reported_in_full_run(self, sample_parquet_dir):
-        """AC9.1, AC9.2: Verify progress is reported during full pipeline run."""
+    def test_ac91_ingestion_progress(self, sample_parquet_dir):
+        """AC9.1: Verify output contains per-file progress indicators (ingestion)."""
         with tempfile.TemporaryDirectory() as output_dir:
             result = runner.invoke(
                 app,
@@ -187,6 +187,33 @@ class TestCLIProgressReporting:
             )
             # Should succeed
             assert result.exit_code == 0
+            # Check for ingestion progress indicator text
+            assert "Found subsamples" in result.output, (
+                "Expected 'Found subsamples' in output for AC9.1 ingestion progress"
+            )
+
+    def test_ac92_transform_export_progress(self, sample_parquet_dir):
+        """AC9.2: Verify output contains per-table progress indicators (transform/export)."""
+        with tempfile.TemporaryDirectory() as output_dir:
+            result = runner.invoke(
+                app,
+                [
+                    "--input",
+                    str(sample_parquet_dir),
+                    "--output",
+                    output_dir,
+                    "--format",
+                    "parquet",
+                    "--file-ext",
+                    ".parquet",
+                ],
+            )
+            # Should succeed
+            assert result.exit_code == 0
+            # Check for completion progress indicator text
+            assert "Done" in result.output, (
+                "Expected 'Done' in output for AC9.2 transform/export progress"
+            )
 
 
 class TestCLICleanup:
