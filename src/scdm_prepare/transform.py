@@ -104,7 +104,6 @@ def assemble_tables(con: duckdb.DuckDBPyConnection, temp_dir: Path | str) -> Non
 
     for table_name, table_def in data_derived_tables.items():
         # Check if the source table exists
-        glob_pattern = str(temp_dir / f"{table_name}_*.parquet")
         matching_files = list(Path(temp_dir).glob(f"{table_name}_*.parquet"))
         if not matching_files:
             # Skip this table if no source files exist
@@ -120,8 +119,7 @@ def assemble_tables(con: duckdb.DuckDBPyConnection, temp_dir: Path | str) -> Non
         for col in table_def.columns:
             if col in table_def.crosswalk_ids:
                 # This column comes from a crosswalk
-                crosswalk_type = col  # e.g., "PatID", "EncounterID"
-                crosswalk_name = _get_crosswalk_name(crosswalk_type)
+                crosswalk_name = _get_crosswalk_name(col)
                 alias = _get_or_create_alias(join_aliases, crosswalk_name, alias_counter)
                 select_parts.append(f"{alias}.{col}")
             else:
@@ -232,14 +230,15 @@ def _get_crosswalk_name(id_column: str) -> str:
 
     Returns:
         Crosswalk table name (e.g., "patid_crosswalk", "encounterid_crosswalk")
+
+    Raises:
+        ValueError: If no crosswalk is defined for the given column
     """
-    mapping = {
-        "PatID": "patid_crosswalk",
-        "EncounterID": "encounterid_crosswalk",
-        "ProviderID": "providerid_crosswalk",
-        "FacilityID": "facilityid_crosswalk",
-    }
-    return mapping.get(id_column, "")
+    mapping = {cw.id_column: cw.crosswalk_name for cw in CROSSWALKS.values()}
+    crosswalk_name = mapping.get(id_column)
+    if crosswalk_name is None:
+        raise ValueError(f"no crosswalk defined for column: {id_column}")
+    return crosswalk_name
 
 
 def _get_or_create_alias(

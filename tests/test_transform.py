@@ -741,14 +741,9 @@ class TestTableAssembly:
 
             enrollment = con.sql("SELECT * FROM enrollment").pl()
 
-            # Check that PatID is sorted (should have P1 entries before P2)
+            # Check that PatID is sorted
             patient_ids = enrollment["PatID"].to_list()
-            # All P1s should come before all P2s
-            p1_indices = [i for i, p in enumerate(patient_ids) if p < patient_ids[-1]]
-            p2_indices = [i for i, p in enumerate(patient_ids) if p == patient_ids[-1]]
-
-            if p1_indices and p2_indices:
-                assert max(p1_indices) < min(p2_indices), "PatID not sorted correctly"
+            assert patient_ids == sorted(patient_ids), "PatID not sorted correctly"
 
             con.close()
 
@@ -831,12 +826,12 @@ class TestTableAssembly:
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir_path = Path(tmpdir)
 
-            # Create diagnosis with ProviderID
+            # Create diagnosis with ProviderID matching the fixture's provider ID
             diagnosis_data = {
                 "PatID": ["P1"],
                 "EncounterID": ["E1"],
                 "ADate": [None],
-                "ProviderID": ["PR1"],
+                "ProviderID": ["Pr1"],
                 "EncType": ["I"],
                 "DX": ["DX001"],
                 "Dx_Codetype": ["ICD9CM"],
@@ -856,11 +851,164 @@ class TestTableAssembly:
 
             diagnosis = con.sql("SELECT * FROM diagnosis").pl()
 
-            # ProviderID should be mapped (should be numeric)
+            # ProviderID should be mapped to an integer via the crosswalk
             provider_ids = diagnosis["ProviderID"].to_list()
-            # First row should have the mapped ID (not the original)
-            # Crosswalk assigns sequential integers
-            assert isinstance(provider_ids[0], (int, type(None))) or provider_ids[0] is None
+            # First row should have the mapped ID (an integer, not the original string)
+            assert isinstance(provider_ids[0], int), f"Expected int, got {type(provider_ids[0])}"
+
+            con.close()
+
+    def test_ac41_encounter_columns(self):
+        """AC4.1: Encounter table contains exactly the expected columns."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+
+            # Create minimal encounter data with all required columns
+            encounter_data = {
+                "PatID": ["P1"],
+                "EncounterID": ["E1"],
+                "ADate": [None],
+                "DDate": [None],
+                "EncType": ["I"],
+                "FacilityID": ["F1"],
+                "Discharge_Disposition": ["home"],
+                "Discharge_Status": [1],
+                "DRG": [1],
+                "DRG_Type": ["I"],
+                "Admitting_Source": ["ER"],
+                "samplenum": [1],
+            }
+            df = pl.DataFrame(encounter_data)
+            df.write_parquet(str(tmpdir_path / "encounter_1.parquet"))
+
+            _create_minimal_fixtures(tmpdir_path)
+
+            con = duckdb.connect(":memory:")
+            build_crosswalks(con, tmpdir_path)
+            assemble_tables(con, tmpdir_path)
+
+            # Retrieve encounter table
+            encounter = con.sql("SELECT * FROM encounter").pl()
+
+            # Check columns match expected
+            expected_cols = set(TABLES["encounter"].columns)
+            actual_cols = set(encounter.columns)
+            assert actual_cols == expected_cols, f"Expected {expected_cols}, got {actual_cols}"
+
+            con.close()
+
+    def test_ac42_encounter_column_order(self):
+        """AC4.2: Encounter column order matches schema specification."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+
+            encounter_data = {
+                "PatID": ["P1"],
+                "EncounterID": ["E1"],
+                "ADate": [None],
+                "DDate": [None],
+                "EncType": ["I"],
+                "FacilityID": ["F1"],
+                "Discharge_Disposition": ["home"],
+                "Discharge_Status": [1],
+                "DRG": [1],
+                "DRG_Type": ["I"],
+                "Admitting_Source": ["ER"],
+                "samplenum": [1],
+            }
+            df = pl.DataFrame(encounter_data)
+            df.write_parquet(str(tmpdir_path / "encounter_1.parquet"))
+
+            _create_minimal_fixtures(tmpdir_path)
+
+            con = duckdb.connect(":memory:")
+            build_crosswalks(con, tmpdir_path)
+            assemble_tables(con, tmpdir_path)
+
+            encounter = con.sql("SELECT * FROM encounter").pl()
+
+            # Check column order
+            expected_order = list(TABLES["encounter"].columns)
+            actual_order = encounter.columns
+            assert actual_order == expected_order, (
+                f"Column order mismatch. Expected {expected_order}, got {actual_order}"
+            )
+
+            con.close()
+
+    def test_ac41_diagnosis_columns(self):
+        """AC4.1: Diagnosis table contains exactly the expected columns."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+
+            # Create minimal diagnosis data with all required columns
+            diagnosis_data = {
+                "PatID": ["P1"],
+                "EncounterID": ["E1"],
+                "ADate": [None],
+                "ProviderID": ["Pr1"],
+                "EncType": ["I"],
+                "DX": ["DX001"],
+                "Dx_Codetype": ["ICD9CM"],
+                "OrigDX": ["DX001"],
+                "PDX": ["Y"],
+                "PAdmit": ["Y"],
+                "samplenum": [1],
+            }
+            df = pl.DataFrame(diagnosis_data)
+            df.write_parquet(str(tmpdir_path / "diagnosis_1.parquet"))
+
+            _create_minimal_fixtures(tmpdir_path)
+
+            con = duckdb.connect(":memory:")
+            build_crosswalks(con, tmpdir_path)
+            assemble_tables(con, tmpdir_path)
+
+            # Retrieve diagnosis table
+            diagnosis = con.sql("SELECT * FROM diagnosis").pl()
+
+            # Check columns match expected
+            expected_cols = set(TABLES["diagnosis"].columns)
+            actual_cols = set(diagnosis.columns)
+            assert actual_cols == expected_cols, f"Expected {expected_cols}, got {actual_cols}"
+
+            con.close()
+
+    def test_ac42_diagnosis_column_order(self):
+        """AC4.2: Diagnosis column order matches schema specification."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+
+            diagnosis_data = {
+                "PatID": ["P1"],
+                "EncounterID": ["E1"],
+                "ADate": [None],
+                "ProviderID": ["Pr1"],
+                "EncType": ["I"],
+                "DX": ["DX001"],
+                "Dx_Codetype": ["ICD9CM"],
+                "OrigDX": ["DX001"],
+                "PDX": ["Y"],
+                "PAdmit": ["Y"],
+                "samplenum": [1],
+            }
+            df = pl.DataFrame(diagnosis_data)
+            df.write_parquet(str(tmpdir_path / "diagnosis_1.parquet"))
+
+            _create_minimal_fixtures(tmpdir_path)
+
+            con = duckdb.connect(":memory:")
+            build_crosswalks(con, tmpdir_path)
+            assemble_tables(con, tmpdir_path)
+
+            diagnosis = con.sql("SELECT * FROM diagnosis").pl()
+
+            # Check column order
+            expected_order = list(TABLES["diagnosis"].columns)
+            actual_order = diagnosis.columns
+            assert actual_order == expected_order, (
+                f"Column order mismatch. Expected {expected_order}, got {actual_order}"
+            )
 
             con.close()
 
