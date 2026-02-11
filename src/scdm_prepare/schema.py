@@ -1,20 +1,20 @@
 from dataclasses import dataclass
 
 
-@dataclass
+@dataclass(frozen=True)
 class TableDef:
     """Definition of a SCDM table schema."""
 
     name: str
-    columns: list[str]
-    sort_keys: list[str]
+    columns: tuple[str, ...]
+    sort_keys: tuple[str, ...]
     crosswalk_ids: dict[str, str]
 
 
 TABLES = {
     "enrollment": TableDef(
         name="enrollment",
-        columns=[
+        columns=(
             "PatID",
             "Enr_Start",
             "Enr_End",
@@ -23,13 +23,13 @@ TABLES = {
             "Chart",
             "PlanType",
             "PayerType",
-        ],
-        sort_keys=["PatID", "Enr_Start", "Enr_End", "MedCov", "DrugCov", "Chart"],
+        ),
+        sort_keys=("PatID", "Enr_Start", "Enr_End", "MedCov", "DrugCov", "Chart"),
         crosswalk_ids={"PatID": "inner"},
     ),
     "demographic": TableDef(
         name="demographic",
-        columns=[
+        columns=(
             "PatID",
             "Birth_Date",
             "Sex",
@@ -39,19 +39,19 @@ TABLES = {
             "PostalCode_Date",
             "ImputedRace",
             "ImputedHispanic",
-        ],
-        sort_keys=["PatID"],
+        ),
+        sort_keys=("PatID",),
         crosswalk_ids={"PatID": "inner"},
     ),
     "dispensing": TableDef(
         name="dispensing",
-        columns=["PatID", "ProviderID", "RxDate", "Rx", "Rx_CodeType", "RxSup", "RxAmt"],
-        sort_keys=["PatID", "RxDate"],
+        columns=("PatID", "ProviderID", "RxDate", "Rx", "Rx_CodeType", "RxSup", "RxAmt"),
+        sort_keys=("PatID", "RxDate"),
         crosswalk_ids={"PatID": "inner", "ProviderID": "left"},
     ),
     "encounter": TableDef(
         name="encounter",
-        columns=[
+        columns=(
             "PatID",
             "EncounterID",
             "ADate",
@@ -63,13 +63,13 @@ TABLES = {
             "DRG",
             "DRG_Type",
             "Admitting_Source",
-        ],
-        sort_keys=["PatID", "ADate"],
+        ),
+        sort_keys=("PatID", "ADate"),
         crosswalk_ids={"PatID": "inner", "EncounterID": "left", "FacilityID": "left"},
     ),
     "diagnosis": TableDef(
         name="diagnosis",
-        columns=[
+        columns=(
             "PatID",
             "EncounterID",
             "ADate",
@@ -80,13 +80,13 @@ TABLES = {
             "OrigDX",
             "PDX",
             "PAdmit",
-        ],
-        sort_keys=["PatID", "ADate"],
+        ),
+        sort_keys=("PatID", "ADate"),
         crosswalk_ids={"PatID": "inner", "EncounterID": "left", "ProviderID": "left"},
     ),
     "procedure": TableDef(
         name="procedure",
-        columns=[
+        columns=(
             "PatID",
             "EncounterID",
             "ADate",
@@ -95,26 +95,26 @@ TABLES = {
             "PX",
             "PX_CodeType",
             "OrigPX",
-        ],
-        sort_keys=["PatID", "ADate"],
+        ),
+        sort_keys=("PatID", "ADate"),
         crosswalk_ids={"PatID": "inner", "EncounterID": "left", "ProviderID": "left"},
     ),
     "death": TableDef(
         name="death",
-        columns=["PatID", "DeathDt", "DtImpute", "Source", "Confidence"],
-        sort_keys=["PatID"],
+        columns=("PatID", "DeathDt", "DtImpute", "Source", "Confidence"),
+        sort_keys=("PatID",),
         crosswalk_ids={"PatID": "inner"},
     ),
     "provider": TableDef(
         name="provider",
-        columns=["ProviderID", "Specialty", "Specialty_CodeType"],
-        sort_keys=["ProviderID"],
+        columns=("ProviderID", "Specialty", "Specialty_CodeType"),
+        sort_keys=("ProviderID",),
         crosswalk_ids={},
     ),
     "facility": TableDef(
         name="facility",
-        columns=["FacilityID", "Facility_Location"],
-        sort_keys=["FacilityID"],
+        columns=("FacilityID", "Facility_Location"),
+        sort_keys=("FacilityID",),
         crosswalk_ids={},
     ),
 }

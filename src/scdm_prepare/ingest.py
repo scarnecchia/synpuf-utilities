@@ -1,6 +1,5 @@
 import re
 from pathlib import Path
-from typing import Optional
 
 import polars as pl
 import pyreadstat
@@ -31,8 +30,8 @@ def source_file_path(
 
 def discover_subsamples(
     input_dir: Path | str,
-    first: Optional[int] = None,
-    last: Optional[int] = None,
+    first: int | None = None,
+    last: int | None = None,
     file_ext: str = ".sas7bdat",
 ) -> list[int]:
     """Discover subsample numbers from source files in input directory.
@@ -73,7 +72,7 @@ def discover_subsamples(
     # AC1.5: Empty directory or no matching files
     if not found_files:
         raise ValueError(
-            f"No files matching pattern '*_{{}}{file_ext}' found in {input_dir}"
+            f"No files matching pattern '*_<N>{file_ext}' found in {input_dir}"
         )
 
     # Determine range
