@@ -1,7 +1,6 @@
 """Export assembled SCDM tables from DuckDB to parquet, CSV, or NDJSON format."""
 
 from pathlib import Path
-from typing import Optional
 
 import duckdb
 
@@ -94,7 +93,7 @@ def export_all(
     table_names: list[str],
     output_dir: str | Path,
     fmt: str,
-    progress: Optional[ProgressTracker] = None,
+    progress: ProgressTracker | None = None,
 ) -> None:
     """Export multiple tables to the specified format.
 

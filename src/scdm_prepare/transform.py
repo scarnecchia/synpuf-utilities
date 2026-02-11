@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Optional
 
 import duckdb
 import polars as pl
@@ -79,7 +78,7 @@ def get_crosswalk(
     return con.sql(f"SELECT * FROM {crosswalk_name}").pl()
 
 
-def assemble_tables(con: duckdb.DuckDBPyConnection, temp_dir: Path | str, progress: Optional[ProgressTracker] = None) -> None:
+def assemble_tables(con: duckdb.DuckDBPyConnection, temp_dir: Path | str, progress: ProgressTracker | None = None) -> None:
     """Assemble all 9 SCDM output tables from ingested data and crosswalks.
 
     For each of the 7 data-derived tables (enrollment, demographic, dispensing,
@@ -189,6 +188,11 @@ def assemble_tables(con: duckdb.DuckDBPyConnection, temp_dir: Path | str, progre
 
     # Synthesise provider and facility tables (always done, progress handled above)
     synthesise_tables(con)
+    if progress:
+        progress.update_description("Transforming provider")
+        progress.advance()
+        progress.update_description("Transforming facility")
+        progress.advance()
 
 
 def synthesise_tables(con: duckdb.DuckDBPyConnection) -> None:

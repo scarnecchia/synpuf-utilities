@@ -1,6 +1,5 @@
 import re
 from pathlib import Path
-from typing import Optional
 
 import polars as pl
 import pyreadstat
@@ -186,7 +185,7 @@ def ingest_all(
     output_dir: Path | str,
     file_ext: str = ".sas7bdat",
     chunk_size: int = 10000,
-    progress: Optional[ProgressTracker] = None,
+    progress: ProgressTracker | None = None,
 ) -> None:
     """Ingest all 9 table types for given subsamples to temp parquet.
 
