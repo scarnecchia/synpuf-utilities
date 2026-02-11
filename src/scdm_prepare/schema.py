@@ -56,7 +56,7 @@ TABLES = {
         name="dispensing",
         columns=("PatID", "ProviderID", "RxDate", "Rx", "Rx_CodeType", "RxSup", "RxAmt"),
         sort_keys=("PatID", "RxDate"),
-        crosswalk_ids={"PatID": "inner", "ProviderID": "left"},
+        crosswalk_ids={"PatID": "inner"},
     ),
     "encounter": TableDef(
         name="encounter",

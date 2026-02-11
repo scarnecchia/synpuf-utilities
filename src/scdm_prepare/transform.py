@@ -3,7 +3,7 @@ from pathlib import Path
 import duckdb
 import polars as pl
 
-from scdm_prepare.schema import CROSSWALKS
+from scdm_prepare.schema import CROSSWALKS, TABLES
 
 
 def build_crosswalks(con: duckdb.DuckDBPyConnection, temp_dir: Path | str) -> None:
@@ -75,3 +75,191 @@ def get_crosswalk(
         raise ValueError(f"unknown crosswalk: {crosswalk_name}")
 
     return con.sql(f"SELECT * FROM {crosswalk_name}").pl()
+
+
+def assemble_tables(con: duckdb.DuckDBPyConnection, temp_dir: Path | str) -> None:
+    """Assemble all 9 SCDM output tables from ingested data and crosswalks.
+
+    For each of the 7 data-derived tables (enrollment, demographic, dispensing,
+    encounter, diagnosis, procedure, death):
+    1. SELECT specified columns from source data and crosswalks
+    2. INNER JOIN patid_crosswalk (required for all tables)
+    3. LEFT JOIN other crosswalks as needed (EncounterID, ProviderID, FacilityID)
+    4. ORDER BY the table's sort keys
+
+    Provider and Facility tables are synthesised separately via synthesise_tables().
+
+    Args:
+        con: DuckDB connection
+        temp_dir: Directory containing ingested parquet files
+    """
+    temp_dir = Path(temp_dir)
+
+    # Define data-derived tables (exclude provider and facility which are synthesised)
+    data_derived_tables = {
+        name: table_def
+        for name, table_def in TABLES.items()
+        if name not in ("provider", "facility")
+    }
+
+    for table_name, table_def in data_derived_tables.items():
+        # Check if the source table exists
+        glob_pattern = str(temp_dir / f"{table_name}_*.parquet")
+        matching_files = list(Path(temp_dir).glob(f"{table_name}_*.parquet"))
+        if not matching_files:
+            # Skip this table if no source files exist
+            continue
+        # Build the SELECT clause with proper column selections
+        select_parts = []
+        join_clauses = []
+        join_aliases = {}
+
+        # Track which alias to use for each crosswalk
+        alias_counter = {"b": ord("b")}
+
+        for col in table_def.columns:
+            if col in table_def.crosswalk_ids:
+                # This column comes from a crosswalk
+                crosswalk_type = col  # e.g., "PatID", "EncounterID"
+                crosswalk_name = _get_crosswalk_name(crosswalk_type)
+                alias = _get_or_create_alias(join_aliases, crosswalk_name, alias_counter)
+                select_parts.append(f"{alias}.{col}")
+            else:
+                # This column comes from the source data
+                select_parts.append(f"a.{col}")
+
+        select_clause = ", ".join(select_parts)
+
+        # Build JOIN clauses based on crosswalk_ids
+        for id_col, join_type in table_def.crosswalk_ids.items():
+            crosswalk_name = _get_crosswalk_name(id_col)
+            alias = _get_or_create_alias(join_aliases, crosswalk_name, alias_counter)
+
+            # For source data, we need to determine the original column name
+            orig_col = f"a.{id_col}"
+
+            if join_type.upper() == "INNER":
+                join_clauses.append(
+                    f"INNER JOIN {crosswalk_name} AS {alias}\n"
+                    f"  ON {orig_col} = {alias}.orig_{id_col} AND a.samplenum = {alias}.samplenum"
+                )
+            else:  # LEFT
+                join_clauses.append(
+                    f"LEFT JOIN {crosswalk_name} AS {alias}\n"
+                    f"  ON {orig_col} = {alias}.orig_{id_col} AND a.samplenum = {alias}.samplenum"
+                )
+
+        # Build FROM clause with glob pattern
+        glob_pattern = str(temp_dir / f"{table_name}_*.parquet")
+        from_clause = f"read_parquet('{glob_pattern}') AS a"
+
+        # Build ORDER BY clause
+        order_parts = []
+        for sort_key in table_def.sort_keys:
+            if sort_key in table_def.crosswalk_ids:
+                # Sort key comes from a crosswalk
+                crosswalk_name = _get_crosswalk_name(sort_key)
+                alias = join_aliases.get(crosswalk_name, "")
+                if alias:
+                    order_parts.append(f"{alias}.{sort_key}")
+                else:
+                    order_parts.append(f"{sort_key}")
+            else:
+                # Sort key comes from source data
+                order_parts.append(f"a.{sort_key}")
+
+        order_by_clause = ", ".join(order_parts)
+
+        # Build final SQL
+        sql = f"""
+        CREATE OR REPLACE TABLE {table_name} AS
+        SELECT {select_clause}
+        FROM {from_clause}
+        {chr(10).join(join_clauses)}
+        ORDER BY {order_by_clause}
+        """
+
+        con.execute(sql)
+
+
+def synthesise_tables(con: duckdb.DuckDBPyConnection) -> None:
+    """Synthesise Provider and Facility tables from crosswalks.
+
+    Provider table:
+    - Columns: ProviderID, Specialty, Specialty_CodeType
+    - Built from providerid_crosswalk
+    - Hardcoded: Specialty='99', Specialty_CodeType='2'
+    - Excludes rows where original ProviderID was NULL
+
+    Facility table:
+    - Columns: FacilityID, Facility_Location
+    - Built from facilityid_crosswalk
+    - Empty Facility_Location string
+    - Excludes rows where original FacilityID was NULL
+
+    Args:
+        con: DuckDB connection
+    """
+    # Provider table
+    con.execute("""
+        CREATE OR REPLACE TABLE provider AS
+        SELECT
+            ProviderID,
+            '99' AS Specialty,
+            '2' AS Specialty_CodeType
+        FROM providerid_crosswalk
+        WHERE orig_ProviderID IS NOT NULL
+        ORDER BY ProviderID
+    """)
+
+    # Facility table
+    con.execute("""
+        CREATE OR REPLACE TABLE facility AS
+        SELECT
+            FacilityID,
+            '' AS Facility_Location
+        FROM facilityid_crosswalk
+        WHERE orig_FacilityID IS NOT NULL
+        ORDER BY FacilityID
+    """)
+
+
+def _get_crosswalk_name(id_column: str) -> str:
+    """Map an ID column name to its corresponding crosswalk name.
+
+    Args:
+        id_column: Column name (e.g., "PatID", "EncounterID")
+
+    Returns:
+        Crosswalk table name (e.g., "patid_crosswalk", "encounterid_crosswalk")
+    """
+    mapping = {
+        "PatID": "patid_crosswalk",
+        "EncounterID": "encounterid_crosswalk",
+        "ProviderID": "providerid_crosswalk",
+        "FacilityID": "facilityid_crosswalk",
+    }
+    return mapping.get(id_column, "")
+
+
+def _get_or_create_alias(
+    join_aliases: dict[str, str], crosswalk_name: str, alias_counter: dict[str, int]
+) -> str:
+    """Get or create an alias for a crosswalk in JOIN clauses.
+
+    Args:
+        join_aliases: Dictionary mapping crosswalk names to aliases
+        crosswalk_name: Name of the crosswalk table
+        alias_counter: Counter for generating new aliases
+
+    Returns:
+        Single-character alias (b, c, d, etc.)
+    """
+    if crosswalk_name not in join_aliases:
+        # Create new alias
+        next_ord = alias_counter["b"]
+        alias = chr(next_ord)
+        join_aliases[crosswalk_name] = alias
+        alias_counter["b"] = next_ord + 1
+
+    return join_aliases[crosswalk_name]

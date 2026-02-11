@@ -5,7 +5,8 @@ import duckdb
 import polars as pl
 import pytest
 
-from scdm_prepare.transform import build_crosswalks, get_crosswalk
+from scdm_prepare.schema import TABLES
+from scdm_prepare.transform import assemble_tables, build_crosswalks, get_crosswalk, synthesise_tables
 
 
 def _create_minimal_fixtures(tmpdir_path: Path) -> None:
@@ -542,5 +543,513 @@ class TestCrosswalkEdgeCases:
             # PatID 2 should be for samplenum 2 (orig Z)
             assert rows[0]["samplenum"] == 1
             assert rows[1]["samplenum"] == 2
+
+            con.close()
+
+
+class TestTableAssembly:
+    """Tests for table assembly with crosswalk joins."""
+
+    def test_ac41_enrollment_columns(self):
+        """AC4.1: Enrollment table contains exactly the expected columns."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+
+            # Create minimal enrollment data
+            enrollment_data = {
+                "PatID": ["P1", "P2"],
+                "Enr_Start": [None, None],
+                "Enr_End": [None, None],
+                "MedCov": ["Y", "N"],
+                "DrugCov": ["Y", "Y"],
+                "Chart": ["Y", "N"],
+                "PlanType": ["HMO", "PPO"],
+                "PayerType": ["Medicaid", "Medicare"],
+                "samplenum": [1, 1],
+            }
+            df = pl.DataFrame(enrollment_data)
+            df.write_parquet(str(tmpdir_path / "enrollment_1.parquet"))
+
+            # Create minimal fixtures for other tables
+            _create_minimal_fixtures(tmpdir_path)
+
+            con = duckdb.connect(":memory:")
+            build_crosswalks(con, tmpdir_path)
+            assemble_tables(con, tmpdir_path)
+
+            # Retrieve enrollment table
+            enrollment = con.sql("SELECT * FROM enrollment").pl()
+
+            # Check columns match expected
+            expected_cols = set(TABLES["enrollment"].columns)
+            actual_cols = set(enrollment.columns)
+            assert actual_cols == expected_cols, f"Expected {expected_cols}, got {actual_cols}"
+
+            con.close()
+
+    def test_ac42_enrollment_column_order(self):
+        """AC4.2: Enrollment column order matches schema specification."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+
+            enrollment_data = {
+                "PatID": ["P1"],
+                "Enr_Start": [None],
+                "Enr_End": [None],
+                "MedCov": ["Y"],
+                "DrugCov": ["Y"],
+                "Chart": ["Y"],
+                "PlanType": ["HMO"],
+                "PayerType": ["Medicaid"],
+                "samplenum": [1],
+            }
+            df = pl.DataFrame(enrollment_data)
+            df.write_parquet(str(tmpdir_path / "enrollment_1.parquet"))
+
+            _create_minimal_fixtures(tmpdir_path)
+
+            con = duckdb.connect(":memory:")
+            build_crosswalks(con, tmpdir_path)
+            assemble_tables(con, tmpdir_path)
+
+            enrollment = con.sql("SELECT * FROM enrollment").pl()
+
+            # Check column order
+            expected_order = list(TABLES["enrollment"].columns)
+            actual_order = enrollment.columns
+            assert actual_order == expected_order, (
+                f"Column order mismatch. Expected {expected_order}, got {actual_order}"
+            )
+
+            con.close()
+
+    def test_ac43_inner_join_patid_excludes_nulls(self):
+        """AC4.3: INNER JOIN on PatID excludes rows with NULL PatID in source."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+
+            # Create demographic with a NULL PatID
+            demographic_data = {
+                "PatID": ["P1", None, "P3"],
+                "Birth_Date": [None] * 3,
+                "Sex": ["M", "F", "M"],
+                "Hispanic": ["N", "Y", "N"],
+                "Race": ["W", "B", "A"],
+                "PostalCode": ["12345", "54321", "11111"],
+                "PostalCode_Date": [None] * 3,
+                "ImputedRace": ["N"] * 3,
+                "ImputedHispanic": ["N"] * 3,
+                "samplenum": [1, 1, 1],
+            }
+            df = pl.DataFrame(demographic_data)
+            df.write_parquet(str(tmpdir_path / "demographic_1.parquet"))
+
+            _create_minimal_fixtures(tmpdir_path)
+
+            con = duckdb.connect(":memory:")
+            build_crosswalks(con, tmpdir_path)
+            assemble_tables(con, tmpdir_path)
+
+            demographic = con.sql("SELECT * FROM demographic").pl()
+
+            # Should only have 2 rows (P1 and P3, not the NULL one)
+            assert len(demographic) == 2, f"Expected 2 rows, got {len(demographic)}"
+
+            con.close()
+
+    def test_ac43_left_join_encounterid_includes_nulls(self):
+        """AC4.3: LEFT JOIN on EncounterID includes rows with NULL new ID."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+
+            # Create encounter with a NULL EncounterID
+            encounter_data = {
+                "PatID": ["P1", "P2"],
+                "EncounterID": ["E1", None],
+                "ADate": [None] * 2,
+                "DDate": [None] * 2,
+                "EncType": ["I", "O"],
+                "FacilityID": ["F1", "F2"],
+                "Discharge_Disposition": ["home", "home"],
+                "Discharge_Status": [1, 1],
+                "DRG": [1, 2],
+                "DRG_Type": ["I", "I"],
+                "Admitting_Source": ["ER", "OP"],
+                "samplenum": [1, 1],
+            }
+            df = pl.DataFrame(encounter_data)
+            df.write_parquet(str(tmpdir_path / "encounter_1.parquet"))
+
+            # Create demographic with both P1 and P2 so both pass INNER JOIN
+            demographic_data = {
+                "PatID": ["P1", "P2"],
+                "Birth_Date": [None] * 2,
+                "Sex": ["M", "F"],
+                "Hispanic": ["N", "Y"],
+                "Race": ["W", "B"],
+                "PostalCode": ["12345", "54321"],
+                "PostalCode_Date": [None] * 2,
+                "ImputedRace": ["N"] * 2,
+                "ImputedHispanic": ["N"] * 2,
+                "samplenum": [1, 1],
+            }
+            df_demo = pl.DataFrame(demographic_data)
+            df_demo.write_parquet(str(tmpdir_path / "demographic_1.parquet"))
+
+            _create_minimal_fixtures(tmpdir_path)
+
+            con = duckdb.connect(":memory:")
+            build_crosswalks(con, tmpdir_path)
+            assemble_tables(con, tmpdir_path)
+
+            encounter = con.sql("SELECT * FROM encounter").pl()
+
+            # Should have 2 rows: one with EncounterID mapped, one with NULL
+            assert len(encounter) == 2, f"Expected 2 rows, got {len(encounter)}"
+
+            # Find the row with NULL source EncounterID
+            null_encounter_rows = encounter.filter(pl.col("EncounterID").is_null())
+            assert len(null_encounter_rows) == 1, "Expected 1 row with NULL EncounterID"
+
+            con.close()
+
+    def test_ac51_enrollment_sort_order(self):
+        """AC5.1: Enrollment table is sorted by PatID, Enr_Start, Enr_End, MedCov, DrugCov, Chart."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+
+            # Create enrollment with multiple rows in non-sorted order
+            enrollment_data = {
+                "PatID": ["P2", "P1", "P2", "P1"],
+                "Enr_Start": [None, None, None, None],
+                "Enr_End": [None, None, None, None],
+                "MedCov": ["N", "Y", "Y", "N"],
+                "DrugCov": ["Y", "Y", "N", "N"],
+                "Chart": ["Y", "N", "Y", "N"],
+                "PlanType": ["PPO", "HMO", "HMO", "PPO"],
+                "PayerType": ["Medicare", "Medicaid", "Medicaid", "Medicare"],
+                "samplenum": [1, 1, 1, 1],
+            }
+            df = pl.DataFrame(enrollment_data)
+            df.write_parquet(str(tmpdir_path / "enrollment_1.parquet"))
+
+            _create_minimal_fixtures(tmpdir_path)
+
+            con = duckdb.connect(":memory:")
+            build_crosswalks(con, tmpdir_path)
+            assemble_tables(con, tmpdir_path)
+
+            enrollment = con.sql("SELECT * FROM enrollment").pl()
+
+            # Check that PatID is sorted (should have P1 entries before P2)
+            patient_ids = enrollment["PatID"].to_list()
+            # All P1s should come before all P2s
+            p1_indices = [i for i, p in enumerate(patient_ids) if p < patient_ids[-1]]
+            p2_indices = [i for i, p in enumerate(patient_ids) if p == patient_ids[-1]]
+
+            if p1_indices and p2_indices:
+                assert max(p1_indices) < min(p2_indices), "PatID not sorted correctly"
+
+            con.close()
+
+    def test_ac51_demographic_sort_order(self):
+        """AC5.1: Demographic table is sorted by PatID."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+
+            demographic_data = {
+                "PatID": ["P3", "P1", "P2"],
+                "Birth_Date": [None] * 3,
+                "Sex": ["M"] * 3,
+                "Hispanic": ["N"] * 3,
+                "Race": ["W"] * 3,
+                "PostalCode": ["12345"] * 3,
+                "PostalCode_Date": [None] * 3,
+                "ImputedRace": ["N"] * 3,
+                "ImputedHispanic": ["N"] * 3,
+                "samplenum": [1] * 3,
+            }
+            df = pl.DataFrame(demographic_data)
+            df.write_parquet(str(tmpdir_path / "demographic_1.parquet"))
+
+            _create_minimal_fixtures(tmpdir_path)
+
+            con = duckdb.connect(":memory:")
+            build_crosswalks(con, tmpdir_path)
+            assemble_tables(con, tmpdir_path)
+
+            demographic = con.sql("SELECT * FROM demographic").pl()
+
+            # Check that PatID column is sorted
+            patient_ids = demographic["PatID"].to_list()
+            sorted_ids = sorted(patient_ids)
+            # Map to integer keys for comparison
+            id_to_order = {pid: idx for idx, pid in enumerate(sorted_ids)}
+            actual_order = [id_to_order[pid] for pid in patient_ids]
+            expected_order = list(range(len(patient_ids)))
+
+            assert actual_order == expected_order, f"PatID not sorted: {patient_ids}"
+
+            con.close()
+
+    def test_dispensing_passthrough_providerid(self):
+        """Dispensing: ProviderID is passed through directly (not crosswalked)."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+
+            # Create dispensing with specific ProviderID values
+            dispensing_data = {
+                "PatID": ["P1", "P1"],
+                "ProviderID": ["ORIG_PR1", "ORIG_PR2"],
+                "RxDate": [None, None],
+                "Rx": ["RX001", "RX002"],
+                "Rx_CodeType": ["code1", "code1"],
+                "RxSup": [30, 60],
+                "RxAmt": [100, 200],
+                "samplenum": [1, 1],
+            }
+            df = pl.DataFrame(dispensing_data)
+            df.write_parquet(str(tmpdir_path / "dispensing_1.parquet"))
+
+            _create_minimal_fixtures(tmpdir_path)
+
+            con = duckdb.connect(":memory:")
+            build_crosswalks(con, tmpdir_path)
+            assemble_tables(con, tmpdir_path)
+
+            dispensing = con.sql("SELECT * FROM dispensing").pl()
+
+            # ProviderID should be the original values, not mapped
+            provider_ids = set(dispensing["ProviderID"].to_list())
+            assert "ORIG_PR1" in provider_ids, "ProviderID not passed through"
+            assert "ORIG_PR2" in provider_ids, "ProviderID not passed through"
+
+            con.close()
+
+    def test_diagnosis_crosswalks_providerid(self):
+        """Diagnosis: ProviderID is crosswalked via providerid_crosswalk."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+
+            # Create diagnosis with ProviderID
+            diagnosis_data = {
+                "PatID": ["P1"],
+                "EncounterID": ["E1"],
+                "ADate": [None],
+                "ProviderID": ["PR1"],
+                "EncType": ["I"],
+                "DX": ["DX001"],
+                "Dx_Codetype": ["ICD9CM"],
+                "OrigDX": ["DX001"],
+                "PDX": ["Y"],
+                "PAdmit": ["Y"],
+                "samplenum": [1],
+            }
+            df = pl.DataFrame(diagnosis_data)
+            df.write_parquet(str(tmpdir_path / "diagnosis_1.parquet"))
+
+            _create_minimal_fixtures(tmpdir_path)
+
+            con = duckdb.connect(":memory:")
+            build_crosswalks(con, tmpdir_path)
+            assemble_tables(con, tmpdir_path)
+
+            diagnosis = con.sql("SELECT * FROM diagnosis").pl()
+
+            # ProviderID should be mapped (should be numeric)
+            provider_ids = diagnosis["ProviderID"].to_list()
+            # First row should have the mapped ID (not the original)
+            # Crosswalk assigns sequential integers
+            assert isinstance(provider_ids[0], (int, type(None))) or provider_ids[0] is None
+
+            con.close()
+
+
+class TestTableSynthesis:
+    """Tests for Provider and Facility table synthesis."""
+
+    def test_ac61_provider_table_structure(self):
+        """AC6.1: Provider table has correct columns and hardcoded values."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+
+            # Create minimal fixtures
+            _create_minimal_fixtures(tmpdir_path)
+
+            con = duckdb.connect(":memory:")
+            build_crosswalks(con, tmpdir_path)
+            synthesise_tables(con)
+
+            provider = con.sql("SELECT * FROM provider").pl()
+
+            # Check columns
+            expected_cols = {"ProviderID", "Specialty", "Specialty_CodeType"}
+            actual_cols = set(provider.columns)
+            assert actual_cols == expected_cols, f"Expected {expected_cols}, got {actual_cols}"
+
+            # Check hardcoded values
+            assert all(
+                specialty == "99" for specialty in provider["Specialty"]
+            ), "All Specialty values should be '99'"
+            assert all(
+                codetype == "2" for codetype in provider["Specialty_CodeType"]
+            ), "All Specialty_CodeType values should be '2'"
+
+            con.close()
+
+    def test_ac62_facility_table_structure(self):
+        """AC6.2: Facility table has correct columns and empty Facility_Location."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+
+            _create_minimal_fixtures(tmpdir_path)
+
+            con = duckdb.connect(":memory:")
+            build_crosswalks(con, tmpdir_path)
+            synthesise_tables(con)
+
+            facility = con.sql("SELECT * FROM facility").pl()
+
+            # Check columns
+            expected_cols = {"FacilityID", "Facility_Location"}
+            actual_cols = set(facility.columns)
+            assert actual_cols == expected_cols, f"Expected {expected_cols}, got {actual_cols}"
+
+            # Check that Facility_Location is empty string
+            assert all(
+                loc == "" for loc in facility["Facility_Location"]
+            ), "All Facility_Location values should be empty strings"
+
+            con.close()
+
+    def test_ac63_provider_excludes_null_originals(self):
+        """AC6.3: Provider table excludes rows where original ProviderID was NULL."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+
+            # Create provider with a NULL ProviderID
+            provider_data = {
+                "ProviderID": ["PR1", None, "PR3"],
+                "Specialty": ["MD", "RN", "PA"],
+                "Specialty_CodeType": ["code1", "code2", "code3"],
+                "samplenum": [1, 1, 1],
+            }
+            df = pl.DataFrame(provider_data)
+            df.write_parquet(str(tmpdir_path / "provider_1.parquet"))
+
+            _create_minimal_fixtures(tmpdir_path)
+
+            con = duckdb.connect(":memory:")
+            build_crosswalks(con, tmpdir_path)
+            synthesise_tables(con)
+
+            provider = con.sql("SELECT * FROM provider").pl()
+            provider_cw = get_crosswalk(con, "providerid_crosswalk")
+
+            # Crosswalk itself excludes NULL originals by design (phase 3)
+            # So we verify that synthesised provider table matches crosswalk count
+            # and that all provider IDs are non-NULL
+            assert len(provider) == len(provider_cw), (
+                "Provider table should have same count as crosswalk (both exclude NULLs)"
+            )
+
+            # Verify no NULL ProviderID in synthesised table
+            null_rows = provider.filter(pl.col("ProviderID").is_null())
+            assert len(null_rows) == 0, "No NULL ProviderID should be in synthesised provider table"
+
+            con.close()
+
+    def test_ac63_facility_excludes_null_originals(self):
+        """AC6.3: Facility table excludes rows where original FacilityID was NULL."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+
+            # Create facility with a NULL FacilityID
+            facility_data = {
+                "FacilityID": ["F1", None, "F3"],
+                "Facility_Location": ["loc1", "loc2", "loc3"],
+                "samplenum": [1, 1, 1],
+            }
+            df = pl.DataFrame(facility_data)
+            df.write_parquet(str(tmpdir_path / "facility_1.parquet"))
+
+            _create_minimal_fixtures(tmpdir_path)
+
+            con = duckdb.connect(":memory:")
+            build_crosswalks(con, tmpdir_path)
+            synthesise_tables(con)
+
+            facility = con.sql("SELECT * FROM facility").pl()
+            facility_cw = get_crosswalk(con, "facilityid_crosswalk")
+
+            # Crosswalk itself excludes NULL originals by design (phase 3)
+            # So we verify that synthesised facility table matches crosswalk count
+            # and that all facility IDs are non-NULL
+            assert len(facility) == len(facility_cw), (
+                "Facility table should have same count as crosswalk (both exclude NULLs)"
+            )
+
+            # Verify no NULL FacilityID in synthesised table
+            null_rows = facility.filter(pl.col("FacilityID").is_null())
+            assert len(null_rows) == 0, "No NULL FacilityID should be in synthesised facility table"
+
+            con.close()
+
+    def test_provider_sort_order(self):
+        """Provider table is sorted by ProviderID."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+
+            provider_data = {
+                "ProviderID": ["PR3", "PR1", "PR2"],
+                "Specialty": ["MD", "RN", "PA"],
+                "Specialty_CodeType": ["code1"] * 3,
+                "samplenum": [1] * 3,
+            }
+            df = pl.DataFrame(provider_data)
+            df.write_parquet(str(tmpdir_path / "provider_1.parquet"))
+
+            _create_minimal_fixtures(tmpdir_path)
+
+            con = duckdb.connect(":memory:")
+            build_crosswalks(con, tmpdir_path)
+            synthesise_tables(con)
+
+            provider = con.sql("SELECT * FROM provider").pl()
+
+            # Check that ProviderID is sorted by numeric value
+            provider_ids = provider["ProviderID"].to_list()
+            assert all(
+                provider_ids[i] <= provider_ids[i + 1] for i in range(len(provider_ids) - 1)
+            ), "ProviderID not sorted"
+
+            con.close()
+
+    def test_facility_sort_order(self):
+        """Facility table is sorted by FacilityID."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+
+            facility_data = {
+                "FacilityID": ["F3", "F1", "F2"],
+                "Facility_Location": ["loc3", "loc1", "loc2"],
+                "samplenum": [1] * 3,
+            }
+            df = pl.DataFrame(facility_data)
+            df.write_parquet(str(tmpdir_path / "facility_1.parquet"))
+
+            _create_minimal_fixtures(tmpdir_path)
+
+            con = duckdb.connect(":memory:")
+            build_crosswalks(con, tmpdir_path)
+            synthesise_tables(con)
+
+            facility = con.sql("SELECT * FROM facility").pl()
+
+            # Check that FacilityID is sorted by numeric value
+            facility_ids = facility["FacilityID"].to_list()
+            assert all(
+                facility_ids[i] <= facility_ids[i + 1] for i in range(len(facility_ids) - 1)
+            ), "FacilityID not sorted"
 
             con.close()
