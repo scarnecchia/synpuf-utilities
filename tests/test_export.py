@@ -390,3 +390,246 @@ class TestExportNDJSON:
             assert len(result_df) == 3
             assert result_df["id"].to_list() == [1, 2, 3]
             assert result_df["name"].to_list() == ["Alice", "Bob", "Charlie"]
+
+
+class TestExportIntegration:
+    """Integration tests for export_table() and export_all() (AC7.1-AC7.4)."""
+
+    def test_roundtrip_parquet(self, duckdb_con):
+        """Round-trip test: export to parquet and read back."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+
+            # Create table with mixed types
+            original_data = {
+                "id": [1, 2, 3, 4, 5],
+                "name": ["Alice", "Bob", "Charlie", "David", "Eve"],
+                "date": [
+                    datetime.date(2020, 1, 15),
+                    datetime.date(2021, 6, 20),
+                    datetime.date(2022, 12, 25),
+                    datetime.date(2023, 3, 10),
+                    None,
+                ],
+                "amount": [100.5, 200.75, 300.0, None, 450.25],
+            }
+            df = pl.DataFrame(original_data)
+            duckdb_con.register("roundtrip_parquet", df)
+
+            # Export to parquet
+            export_table(duckdb_con, "roundtrip_parquet", tmpdir, "parquet")
+
+            # Read back
+            result_df = pl.read_parquet(str(tmpdir / "roundtrip_parquet.parquet"))
+
+            # Verify data matches
+            assert len(result_df) == 5
+            assert result_df["id"].to_list() == [1, 2, 3, 4, 5]
+            assert result_df["name"].to_list() == ["Alice", "Bob", "Charlie", "David", "Eve"]
+
+    def test_roundtrip_csv(self, duckdb_con):
+        """Round-trip test: export to CSV and read back."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+
+            # Create table with mixed types
+            original_data = {
+                "id": [10, 20, 30],
+                "value": ["X", "Y", "Z"],
+                "score": [95.5, 87.3, 92.1],
+            }
+            df = pl.DataFrame(original_data)
+            duckdb_con.register("roundtrip_csv", df)
+
+            # Export to CSV
+            export_table(duckdb_con, "roundtrip_csv", tmpdir, "csv")
+
+            # Read back
+            result_df = pl.read_csv(str(tmpdir / "roundtrip_csv.csv"))
+
+            # Verify data matches
+            assert len(result_df) == 3
+            assert result_df["id"].to_list() == [10, 20, 30]
+            assert result_df["value"].to_list() == ["X", "Y", "Z"]
+
+    def test_roundtrip_ndjson(self, duckdb_con):
+        """Round-trip test: export to NDJSON and read back."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+
+            # Create table with mixed types
+            original_data = {
+                "user_id": [100, 101, 102],
+                "username": ["alice", "bob", "charlie"],
+                "active": [True, False, True],
+            }
+            df = pl.DataFrame(original_data)
+            duckdb_con.register("roundtrip_ndjson", df)
+
+            # Export to NDJSON
+            export_table(duckdb_con, "roundtrip_ndjson", tmpdir, "json")
+
+            # Read back
+            result_df = pl.read_ndjson(str(tmpdir / "roundtrip_ndjson.json"))
+
+            # Verify data matches
+            assert len(result_df) == 3
+            assert result_df["user_id"].to_list() == [100, 101, 102]
+            assert result_df["username"].to_list() == ["alice", "bob", "charlie"]
+            assert result_df["active"].to_list() == [True, False, True]
+
+    def test_export_all_creates_all_files(self, duckdb_con):
+        """export_all() creates files for all table names."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+
+            # Create multiple tables in DuckDB
+            table_names = ["table1", "table2", "table3", "table4", "table5"]
+            for table_name in table_names:
+                data = {"id": [1, 2, 3], "name": [f"{table_name}_a", f"{table_name}_b", f"{table_name}_c"]}
+                df = pl.DataFrame(data)
+                duckdb_con.register(table_name, df)
+
+            # Export all to parquet
+            export_all(duckdb_con, table_names, tmpdir, "parquet")
+
+            # Verify all files exist with correct naming
+            for table_name in table_names:
+                output_file = tmpdir / f"{table_name}.parquet"
+                assert output_file.exists(), f"Missing {output_file}"
+                # Verify content is readable
+                df_read = pl.read_parquet(str(output_file))
+                assert len(df_read) == 3
+
+    def test_export_all_with_9_tables(self, duckdb_con):
+        """export_all() works with all 9 SCDM table names."""
+        from scdm_prepare.schema import TABLES
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+
+            # Create all 9 tables with minimal data
+            table_names = list(TABLES.keys())
+            for table_name in table_names:
+                # Create table with at least one row and basic columns
+                data = {
+                    col: [f"{col}_{i}" for i in range(3)]
+                    for col in TABLES[table_name].columns[:3]  # Use first 3 columns
+                }
+                df = pl.DataFrame(data)
+                duckdb_con.register(table_name, df)
+
+            # Export all to parquet
+            export_all(duckdb_con, table_names, tmpdir, "parquet")
+
+            # Verify all 9 files exist
+            for table_name in table_names:
+                output_file = tmpdir / f"{table_name}.parquet"
+                assert output_file.exists(), f"Missing {table_name}.parquet"
+
+    def test_export_all_csv_format(self, duckdb_con):
+        """export_all() creates CSV files with headers."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+
+            # Create 3 tables
+            for i in range(1, 4):
+                table_name = f"csv_table_{i}"
+                data = {"col_a": [1, 2], "col_b": ["x", "y"]}
+                df = pl.DataFrame(data)
+                duckdb_con.register(table_name, df)
+
+            table_names = ["csv_table_1", "csv_table_2", "csv_table_3"]
+            export_all(duckdb_con, table_names, tmpdir, "csv")
+
+            # Verify all files exist and have headers
+            for table_name in table_names:
+                output_file = tmpdir / f"{table_name}.csv"
+                assert output_file.exists()
+                with open(output_file) as f:
+                    first_line = f.readline().strip()
+                assert first_line == "col_a,col_b"
+
+    def test_export_all_json_format(self, duckdb_con):
+        """export_all() creates NDJSON files."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+
+            # Create 2 tables
+            for i in range(1, 3):
+                table_name = f"json_table_{i}"
+                data = {"id": [i * 10, i * 20], "type": ["A", "B"]}
+                df = pl.DataFrame(data)
+                duckdb_con.register(table_name, df)
+
+            table_names = ["json_table_1", "json_table_2"]
+            export_all(duckdb_con, table_names, tmpdir, "json")
+
+            # Verify all files exist and are valid NDJSON
+            for table_name in table_names:
+                output_file = tmpdir / f"{table_name}.json"
+                assert output_file.exists()
+                lines = output_file.read_text().strip().split("\n")
+                assert len(lines) == 2
+                for line in lines:
+                    record = json.loads(line)  # Should not raise
+                    assert "id" in record and "type" in record
+
+    def test_export_unsupported_format_raises(self, duckdb_con):
+        """export_table() raises ValueError for unsupported format."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+
+            data = {"col1": [1, 2]}
+            df = pl.DataFrame(data)
+            duckdb_con.register("test_table", df)
+
+            with pytest.raises(ValueError) as exc_info:
+                export_table(duckdb_con, "test_table", tmpdir, "unsupported")
+
+            assert "Unsupported format" in str(exc_info.value)
+
+    def test_export_creates_output_dir_if_not_exists(self, duckdb_con):
+        """export_table() creates output directory if it doesn't exist."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+            output_dir = tmpdir / "subdir" / "nested" / "output"
+
+            data = {"col1": [1, 2]}
+            df = pl.DataFrame(data)
+            duckdb_con.register("test_table", df)
+
+            # Export to non-existent directory
+            export_table(duckdb_con, "test_table", output_dir, "parquet")
+
+            # Verify output directory was created
+            assert output_dir.exists()
+            assert (output_dir / "test_table.parquet").exists()
+
+    def test_export_large_table(self, duckdb_con):
+        """export_table() handles large tables correctly."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+
+            # Create large table with 10,000 rows
+            data = {
+                "id": list(range(10000)),
+                "value": [f"val_{i}" for i in range(10000)],
+                "amount": [float(i * 1.5) for i in range(10000)],
+            }
+            df = pl.DataFrame(data)
+            duckdb_con.register("large_table", df)
+
+            # Export to all formats
+            export_table(duckdb_con, "large_table", tmpdir, "parquet")
+            export_table(duckdb_con, "large_table", tmpdir, "csv")
+            export_table(duckdb_con, "large_table", tmpdir, "json")
+
+            # Verify all files exist and are readable
+            parquet_df = pl.read_parquet(str(tmpdir / "large_table.parquet"))
+            csv_df = pl.read_csv(str(tmpdir / "large_table.csv"))
+            json_df = pl.read_ndjson(str(tmpdir / "large_table.json"))
+
+            assert len(parquet_df) == 10000
+            assert len(csv_df) == 10000
+            assert len(json_df) == 10000
