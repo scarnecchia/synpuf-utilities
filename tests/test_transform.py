@@ -3,9 +3,65 @@ from pathlib import Path
 
 import duckdb
 import polars as pl
-import pytest
 
 from scdm_prepare.transform import build_crosswalks, get_crosswalk
+
+
+def _create_minimal_fixtures(tmpdir_path: Path) -> None:
+    """Create minimal parquet files for all four source tables.
+
+    Each table has a single row with the required columns. Only creates files
+    if they don't already exist in the directory (doesn't overwrite test data).
+
+    Args:
+        tmpdir_path: Directory to write parquet files to
+    """
+    tables_data = {
+        "demographic": {
+            "PatID": ["P1"],
+            "Birth_Date": [None],
+            "Sex": ["M"],
+            "Hispanic": ["N"],
+            "Race": ["W"],
+            "PostalCode": ["12345"],
+            "PostalCode_Date": [None],
+            "ImputedRace": ["N"],
+            "ImputedHispanic": ["N"],
+            "samplenum": [1],
+        },
+        "encounter": {
+            "PatID": ["P1"],
+            "EncounterID": ["E1"],
+            "ADate": [None],
+            "DDate": [None],
+            "EncType": ["I"],
+            "FacilityID": ["F1"],
+            "Discharge_Disposition": ["home"],
+            "Discharge_Status": [1],
+            "DRG": [1],
+            "DRG_Type": ["I"],
+            "Admitting_Source": ["ER"],
+            "samplenum": [1],
+        },
+        "provider": {
+            "ProviderID": ["Pr1"],
+            "Specialty": ["MD"],
+            "Specialty_CodeType": ["code1"],
+            "samplenum": [1],
+        },
+        "facility": {
+            "FacilityID": ["F1"],
+            "Facility_Location": ["loc1"],
+            "samplenum": [1],
+        },
+    }
+
+    for table_name, data in tables_data.items():
+        # Check if any file for this table already exists
+        existing_files = list(tmpdir_path.glob(f"{table_name}_*.parquet"))
+        if not existing_files:
+            df = pl.DataFrame(data)
+            df.write_parquet(str(tmpdir_path / f"{table_name}_1.parquet"))
 
 
 class TestCrosswalkGeneration:
@@ -47,25 +103,12 @@ class TestCrosswalkGeneration:
             df2 = pl.DataFrame(data_sample2)
             df2.write_parquet(str(tmpdir_path / "demographic_2.parquet"))
 
-            # Create DuckDB connection and build patid crosswalk only
+            # Create minimal fixtures for other tables
+            _create_minimal_fixtures(tmpdir_path)
+
+            # Create DuckDB connection and build all crosswalks
             con = duckdb.connect(":memory:")
-            source_table = "demographic"
-            glob_pattern = str(tmpdir_path / f"{source_table}_*.parquet")
-            sql = f"""
-            CREATE OR REPLACE TABLE patid_crosswalk AS
-            SELECT
-                orig_PatID,
-                samplenum,
-                ROW_NUMBER() OVER (ORDER BY samplenum, orig_PatID) AS PatID
-            FROM (
-                SELECT DISTINCT
-                    PatID AS orig_PatID,
-                    samplenum
-                FROM read_parquet('{glob_pattern}')
-                WHERE PatID IS NOT NULL
-            )
-            """
-            con.execute(sql)
+            build_crosswalks(con, tmpdir_path)
 
             # Retrieve patid_crosswalk
             crosswalk = get_crosswalk(con, "patid_crosswalk")
@@ -102,25 +145,12 @@ class TestCrosswalkGeneration:
             df = pl.DataFrame(data)
             df.write_parquet(str(tmpdir_path / "demographic_1.parquet"))
 
-            # Build patid crosswalk
+            # Create minimal fixtures for other tables
+            _create_minimal_fixtures(tmpdir_path)
+
+            # Build all crosswalks
             con = duckdb.connect(":memory:")
-            source_table = "demographic"
-            glob_pattern = str(tmpdir_path / f"{source_table}_*.parquet")
-            sql = f"""
-            CREATE OR REPLACE TABLE patid_crosswalk AS
-            SELECT
-                orig_PatID,
-                samplenum,
-                ROW_NUMBER() OVER (ORDER BY samplenum, orig_PatID) AS PatID
-            FROM (
-                SELECT DISTINCT
-                    PatID AS orig_PatID,
-                    samplenum
-                FROM read_parquet('{glob_pattern}')
-                WHERE PatID IS NOT NULL
-            )
-            """
-            con.execute(sql)
+            build_crosswalks(con, tmpdir_path)
 
             # Retrieve crosswalk
             crosswalk = get_crosswalk(con, "patid_crosswalk")
@@ -231,24 +261,11 @@ class TestCrosswalkEdgeCases:
             df = pl.DataFrame(data)
             df.write_parquet(str(tmpdir_path / "demographic_1.parquet"))
 
+            # Create minimal fixtures for other tables
+            _create_minimal_fixtures(tmpdir_path)
+
             con = duckdb.connect(":memory:")
-            source_table = "demographic"
-            glob_pattern = str(tmpdir_path / f"{source_table}_*.parquet")
-            sql = f"""
-            CREATE OR REPLACE TABLE patid_crosswalk AS
-            SELECT
-                orig_PatID,
-                samplenum,
-                ROW_NUMBER() OVER (ORDER BY samplenum, orig_PatID) AS PatID
-            FROM (
-                SELECT DISTINCT
-                    PatID AS orig_PatID,
-                    samplenum
-                FROM read_parquet('{glob_pattern}')
-                WHERE PatID IS NOT NULL
-            )
-            """
-            con.execute(sql)
+            build_crosswalks(con, tmpdir_path)
 
             crosswalk = get_crosswalk(con, "patid_crosswalk")
             ids = sorted(crosswalk["PatID"].to_list())
@@ -281,24 +298,11 @@ class TestCrosswalkEdgeCases:
             df = pl.DataFrame(data)
             df.write_parquet(str(tmpdir_path / "demographic_1.parquet"))
 
+            # Create minimal fixtures for other tables
+            _create_minimal_fixtures(tmpdir_path)
+
             con = duckdb.connect(":memory:")
-            source_table = "demographic"
-            glob_pattern = str(tmpdir_path / f"{source_table}_*.parquet")
-            sql = f"""
-            CREATE OR REPLACE TABLE patid_crosswalk AS
-            SELECT
-                orig_PatID,
-                samplenum,
-                ROW_NUMBER() OVER (ORDER BY samplenum, orig_PatID) AS PatID
-            FROM (
-                SELECT DISTINCT
-                    PatID AS orig_PatID,
-                    samplenum
-                FROM read_parquet('{glob_pattern}')
-                WHERE PatID IS NOT NULL
-            )
-            """
-            con.execute(sql)
+            build_crosswalks(con, tmpdir_path)
 
             crosswalk = get_crosswalk(con, "patid_crosswalk")
 
@@ -329,24 +333,11 @@ class TestCrosswalkEdgeCases:
             df = pl.DataFrame(data)
             df.write_parquet(str(tmpdir_path / "demographic_1.parquet"))
 
+            # Create minimal fixtures for other tables
+            _create_minimal_fixtures(tmpdir_path)
+
             con = duckdb.connect(":memory:")
-            source_table = "demographic"
-            glob_pattern = str(tmpdir_path / f"{source_table}_*.parquet")
-            sql = f"""
-            CREATE OR REPLACE TABLE patid_crosswalk AS
-            SELECT
-                orig_PatID,
-                samplenum,
-                ROW_NUMBER() OVER (ORDER BY samplenum, orig_PatID) AS PatID
-            FROM (
-                SELECT DISTINCT
-                    PatID AS orig_PatID,
-                    samplenum
-                FROM read_parquet('{glob_pattern}')
-                WHERE PatID IS NOT NULL
-            )
-            """
-            con.execute(sql)
+            build_crosswalks(con, tmpdir_path)
 
             crosswalk = get_crosswalk(con, "patid_crosswalk")
 
@@ -370,24 +361,11 @@ class TestCrosswalkEdgeCases:
             df = pl.DataFrame(data)
             df.write_parquet(str(tmpdir_path / "provider_1.parquet"))
 
+            # Create minimal fixtures for other tables
+            _create_minimal_fixtures(tmpdir_path)
+
             con = duckdb.connect(":memory:")
-            source_table = "provider"
-            glob_pattern = str(tmpdir_path / f"{source_table}_*.parquet")
-            sql = f"""
-            CREATE OR REPLACE TABLE providerid_crosswalk AS
-            SELECT
-                orig_ProviderID,
-                samplenum,
-                ROW_NUMBER() OVER (ORDER BY samplenum, orig_ProviderID) AS ProviderID
-            FROM (
-                SELECT DISTINCT
-                    ProviderID AS orig_ProviderID,
-                    samplenum
-                FROM read_parquet('{glob_pattern}')
-                WHERE ProviderID IS NOT NULL
-            )
-            """
-            con.execute(sql)
+            build_crosswalks(con, tmpdir_path)
 
             crosswalk = get_crosswalk(con, "providerid_crosswalk")
 
@@ -419,24 +397,11 @@ class TestCrosswalkEdgeCases:
             df = pl.DataFrame(data)
             df.write_parquet(str(tmpdir_path / "demographic_1.parquet"))
 
+            # Create minimal fixtures for other tables
+            _create_minimal_fixtures(tmpdir_path)
+
             con = duckdb.connect(":memory:")
-            source_table = "demographic"
-            glob_pattern = str(tmpdir_path / f"{source_table}_*.parquet")
-            sql = f"""
-            CREATE OR REPLACE TABLE patid_crosswalk AS
-            SELECT
-                orig_PatID,
-                samplenum,
-                ROW_NUMBER() OVER (ORDER BY samplenum, orig_PatID) AS PatID
-            FROM (
-                SELECT DISTINCT
-                    PatID AS orig_PatID,
-                    samplenum
-                FROM read_parquet('{glob_pattern}')
-                WHERE PatID IS NOT NULL
-            )
-            """
-            con.execute(sql)
+            build_crosswalks(con, tmpdir_path)
 
             crosswalk = get_crosswalk(con, "patid_crosswalk")
 
@@ -482,24 +447,11 @@ class TestCrosswalkEdgeCases:
             df2 = pl.DataFrame(data2)
             df2.write_parquet(str(tmpdir_path / "demographic_2.parquet"))
 
+            # Create minimal fixtures for other tables
+            _create_minimal_fixtures(tmpdir_path)
+
             con = duckdb.connect(":memory:")
-            source_table = "demographic"
-            glob_pattern = str(tmpdir_path / f"{source_table}_*.parquet")
-            sql = f"""
-            CREATE OR REPLACE TABLE patid_crosswalk AS
-            SELECT
-                orig_PatID,
-                samplenum,
-                ROW_NUMBER() OVER (ORDER BY samplenum, orig_PatID) AS PatID
-            FROM (
-                SELECT DISTINCT
-                    PatID AS orig_PatID,
-                    samplenum
-                FROM read_parquet('{glob_pattern}')
-                WHERE PatID IS NOT NULL
-            )
-            """
-            con.execute(sql)
+            build_crosswalks(con, tmpdir_path)
 
             crosswalk = get_crosswalk(con, "patid_crosswalk")
 
@@ -530,24 +482,11 @@ class TestCrosswalkEdgeCases:
             df = pl.DataFrame(data)
             df.write_parquet(str(tmpdir_path / "demographic_1.parquet"))
 
+            # Create minimal fixtures for other tables
+            _create_minimal_fixtures(tmpdir_path)
+
             con = duckdb.connect(":memory:")
-            source_table = "demographic"
-            glob_pattern = str(tmpdir_path / f"{source_table}_*.parquet")
-            sql = f"""
-            CREATE OR REPLACE TABLE patid_crosswalk AS
-            SELECT
-                orig_PatID,
-                samplenum,
-                ROW_NUMBER() OVER (ORDER BY samplenum, orig_PatID) AS PatID
-            FROM (
-                SELECT DISTINCT
-                    PatID AS orig_PatID,
-                    samplenum
-                FROM read_parquet('{glob_pattern}')
-                WHERE PatID IS NOT NULL
-            )
-            """
-            con.execute(sql)
+            build_crosswalks(con, tmpdir_path)
 
             crosswalk = get_crosswalk(con, "patid_crosswalk")
 
@@ -577,24 +516,11 @@ class TestCrosswalkEdgeCases:
             df = pl.DataFrame(data)
             df.write_parquet(str(tmpdir_path / "demographic_1.parquet"))
 
+            # Create minimal fixtures for other tables
+            _create_minimal_fixtures(tmpdir_path)
+
             con = duckdb.connect(":memory:")
-            source_table = "demographic"
-            glob_pattern = str(tmpdir_path / f"{source_table}_*.parquet")
-            sql = f"""
-            CREATE OR REPLACE TABLE patid_crosswalk AS
-            SELECT
-                orig_PatID,
-                samplenum,
-                ROW_NUMBER() OVER (ORDER BY samplenum, orig_PatID) AS PatID
-            FROM (
-                SELECT DISTINCT
-                    PatID AS orig_PatID,
-                    samplenum
-                FROM read_parquet('{glob_pattern}')
-                WHERE PatID IS NOT NULL
-            )
-            """
-            con.execute(sql)
+            build_crosswalks(con, tmpdir_path)
 
             crosswalk = get_crosswalk(con, "patid_crosswalk").sort("PatID")
 

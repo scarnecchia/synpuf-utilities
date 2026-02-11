@@ -66,8 +66,12 @@ def get_crosswalk(
 
     Returns:
         Polars DataFrame containing the crosswalk
+
+    Raises:
+        ValueError: If crosswalk_name is not a known crosswalk
     """
-    result = con.execute(f"SELECT * FROM {crosswalk_name}")
-    columns = [desc[0] for desc in result.description]
-    rows = result.fetchall()
-    return pl.DataFrame({col: [row[i] for row in rows] for i, col in enumerate(columns)})
+    valid_names = {cw.crosswalk_name for cw in CROSSWALKS.values()}
+    if crosswalk_name not in valid_names:
+        raise ValueError(f"unknown crosswalk: {crosswalk_name}")
+
+    return con.sql(f"SELECT * FROM {crosswalk_name}").pl()
