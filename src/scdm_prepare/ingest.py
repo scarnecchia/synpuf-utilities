@@ -2,6 +2,9 @@ import re
 from pathlib import Path
 from typing import Optional
 
+import polars as pl
+import pyreadstat
+
 from scdm_prepare.schema import TABLES
 
 
@@ -105,3 +108,89 @@ def discover_subsamples(
         )
 
     return validated
+
+
+def ingest_table(
+    input_dir: Path | str,
+    table_name: str,
+    subsamples: list[int],
+    output_dir: Path | str,
+    file_ext: str = ".sas7bdat",
+    chunk_size: int = 10000,
+) -> None:
+    """Read source file in chunks and write temp parquet with samplenum column.
+
+    For SAS7BDAT files: uses pyreadstat chunked reading which auto-converts
+    SAS date columns to Python datetime.date. For parquet test files: reads
+    entire file at once (no chunking needed for small test files).
+
+    Args:
+        input_dir: Directory containing source files
+        table_name: Name of the table (e.g., "enrollment")
+        subsamples: List of subsample numbers to process
+        output_dir: Directory where temp parquet files will be written
+        file_ext: File extension (default: ".sas7bdat")
+        chunk_size: Chunk size for SAS7BDAT reading (default: 10000)
+
+    Raises:
+        ValueError: If source file not found or if writing fails
+    """
+    input_dir = Path(input_dir)
+    output_dir = Path(output_dir)
+    temp_dir = output_dir / "_temp"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+
+    for samplenum in subsamples:
+        source_path = source_file_path(input_dir, table_name, samplenum, file_ext)
+
+        if not source_path.exists():
+            raise ValueError(f"Source file not found: {source_path}")
+
+        # Read based on file extension
+        if file_ext == ".parquet":
+            # For parquet: read entire file and inject samplenum
+            df = pl.read_parquet(str(source_path))
+            df = df.with_columns(pl.lit(samplenum).alias("samplenum"))
+        else:
+            # For SAS7BDAT: read in chunks
+            chunks = []
+            for chunk_df in pyreadstat.read_file_in_chunks(
+                pyreadstat.read_sas7bdat, str(source_path), chunksize=chunk_size
+            ):
+                # chunk_df is a pandas DataFrame
+                # Convert to polars and inject samplenum
+                chunk_pl = pl.from_pandas(chunk_df)
+                chunk_pl = chunk_pl.with_columns(pl.lit(samplenum).alias("samplenum"))
+                chunks.append(chunk_pl)
+
+            # Concatenate all chunks
+            if chunks:
+                df = pl.concat(chunks)
+            else:
+                # Empty file - create empty dataframe with correct schema
+                df = pl.DataFrame({col: [] for col in TABLES[table_name].columns})
+                df = df.with_columns(pl.lit(samplenum).alias("samplenum"))
+
+        # Write to temp parquet
+        output_path = temp_dir / f"{table_name}_{samplenum}.parquet"
+        df.write_parquet(str(output_path))
+
+
+def ingest_all(
+    input_dir: Path | str,
+    subsamples: list[int],
+    output_dir: Path | str,
+    file_ext: str = ".sas7bdat",
+    chunk_size: int = 10000,
+) -> None:
+    """Ingest all 9 table types for given subsamples to temp parquet.
+
+    Args:
+        input_dir: Directory containing source files
+        subsamples: List of subsample numbers to process
+        output_dir: Directory where temp parquet files will be written
+        file_ext: File extension (default: ".sas7bdat")
+        chunk_size: Chunk size for SAS7BDAT reading (default: 10000)
+    """
+    for table_name in TABLES.keys():
+        ingest_table(input_dir, table_name, subsamples, output_dir, file_ext, chunk_size)

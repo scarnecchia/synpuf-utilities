@@ -1,9 +1,10 @@
 import tempfile
 from pathlib import Path
 
+import polars as pl
 import pytest
 
-from scdm_prepare.ingest import discover_subsamples, source_file_path
+from scdm_prepare.ingest import discover_subsamples, ingest_all, ingest_table, source_file_path
 from scdm_prepare.schema import TABLES
 
 
@@ -179,3 +180,146 @@ class TestDiscoverSubsamplesFailure:
 
             error_msg = str(exc_info.value)
             assert "Missing files" in error_msg
+
+
+class TestIngestTable:
+    """AC2.1, AC2.2, AC2.3: Ingestion tests."""
+
+    def test_ac21_samplenum_column_injected(self):
+        """AC2.1: samplenum column is injected into output parquet."""
+        with tempfile.TemporaryDirectory() as input_dir:
+            with tempfile.TemporaryDirectory() as output_dir:
+                input_dir = Path(input_dir)
+                output_dir = Path(output_dir)
+
+                # Create test parquet file
+                table_def = TABLES["enrollment"]
+                test_data = {col: [1, 2, 3] for col in table_def.columns}
+                df = pl.DataFrame(test_data)
+                df.write_parquet(str(input_dir / "enrollment_5.parquet"))
+
+                # Ingest
+                ingest_table(input_dir, "enrollment", [5], output_dir, file_ext=".parquet")
+
+                # Check output
+                output_path = output_dir / "_temp" / "enrollment_5.parquet"
+                assert output_path.exists()
+
+                result_df = pl.read_parquet(str(output_path))
+                assert "samplenum" in result_df.columns
+                assert result_df["samplenum"][0] == 5
+
+    def test_ac21_samplenum_value_correct_for_each_subsample(self):
+        """AC2.1: samplenum has correct value for each subsample."""
+        with tempfile.TemporaryDirectory() as input_dir:
+            with tempfile.TemporaryDirectory() as output_dir:
+                input_dir = Path(input_dir)
+                output_dir = Path(output_dir)
+
+                # Create test parquet files for multiple subsamples
+                table_def = TABLES["enrollment"]
+                for samplenum in [1, 2, 3]:
+                    test_data = {col: [samplenum] for col in table_def.columns}
+                    df = pl.DataFrame(test_data)
+                    df.write_parquet(str(input_dir / f"enrollment_{samplenum}.parquet"))
+
+                # Ingest all
+                ingest_table(input_dir, "enrollment", [1, 2, 3], output_dir, file_ext=".parquet")
+
+                # Check each output
+                for samplenum in [1, 2, 3]:
+                    output_path = output_dir / "_temp" / f"enrollment_{samplenum}.parquet"
+                    result_df = pl.read_parquet(str(output_path))
+                    assert result_df["samplenum"][0] == samplenum
+
+    def test_ac22_all_9_tables_ingested(self):
+        """AC2.2: All 9 table types produce temp parquet files."""
+        with tempfile.TemporaryDirectory() as input_dir:
+            with tempfile.TemporaryDirectory() as output_dir:
+                input_dir = Path(input_dir)
+                output_dir = Path(output_dir)
+
+                # Create test parquet files for all tables
+                for table_name, table_def in TABLES.items():
+                    test_data = {col: [1] for col in table_def.columns}
+                    df = pl.DataFrame(test_data)
+                    df.write_parquet(str(input_dir / f"{table_name}_1.parquet"))
+
+                # Ingest all
+                ingest_all(input_dir, [1], output_dir, file_ext=".parquet")
+
+                # Check all 9 files exist
+                temp_dir = output_dir / "_temp"
+                for table_name in TABLES.keys():
+                    output_path = temp_dir / f"{table_name}_1.parquet"
+                    assert output_path.exists(), f"Missing {output_path}"
+
+    def test_ac23_date_columns_preserved_as_date_type(self):
+        """AC2.3: Date columns in output parquet are date type (not int64)."""
+        import datetime
+        with tempfile.TemporaryDirectory() as input_dir:
+            with tempfile.TemporaryDirectory() as output_dir:
+                input_dir = Path(input_dir)
+                output_dir = Path(output_dir)
+
+                # Create test parquet with date columns
+                table_def = TABLES["demographic"]
+                test_data = {
+                    "PatID": [1, 2],
+                    "Birth_Date": [datetime.date(1990, 1, 15), datetime.date(1985, 3, 20)],
+                    "Sex": ["M", "F"],
+                    "Hispanic": ["Y", "N"],
+                    "Race": ["W", "B"],
+                    "PostalCode": ["12345", "54321"],
+                    "PostalCode_Date": [datetime.date(2020, 1, 1), datetime.date(2020, 2, 1)],
+                    "ImputedRace": ["N", "Y"],
+                    "ImputedHispanic": ["N", "N"],
+                }
+                df = pl.DataFrame(test_data)
+                df.write_parquet(str(input_dir / "demographic_1.parquet"))
+
+                # Ingest
+                ingest_table(input_dir, "demographic", [1], output_dir, file_ext=".parquet")
+
+                # Check output schema
+                output_path = output_dir / "_temp" / "demographic_1.parquet"
+                result_df = pl.read_parquet(str(output_path))
+
+                # Check date columns are Date type
+                assert result_df.schema["Birth_Date"] == pl.Date
+                assert result_df.schema["PostalCode_Date"] == pl.Date
+
+    def test_temp_dir_created_automatically(self):
+        """Temp directory is created if it doesn't exist."""
+        with tempfile.TemporaryDirectory() as input_dir:
+            with tempfile.TemporaryDirectory() as output_dir:
+                input_dir = Path(input_dir)
+                output_dir = Path(output_dir)
+
+                # Create test parquet
+                table_def = TABLES["enrollment"]
+                test_data = {col: [1] for col in table_def.columns}
+                df = pl.DataFrame(test_data)
+                df.write_parquet(str(input_dir / "enrollment_1.parquet"))
+
+                # Ingest
+                temp_dir = output_dir / "_temp"
+                assert not temp_dir.exists()
+
+                ingest_table(input_dir, "enrollment", [1], output_dir, file_ext=".parquet")
+
+                # Temp dir should be created
+                assert temp_dir.exists()
+                assert (temp_dir / "enrollment_1.parquet").exists()
+
+    def test_missing_source_file_raises(self):
+        """Raises ValueError if source file not found."""
+        with tempfile.TemporaryDirectory() as input_dir:
+            with tempfile.TemporaryDirectory() as output_dir:
+                input_dir = Path(input_dir)
+                output_dir = Path(output_dir)
+
+                with pytest.raises(ValueError) as exc_info:
+                    ingest_table(input_dir, "enrollment", [999], output_dir, file_ext=".parquet")
+
+                assert "Source file not found" in str(exc_info.value)
