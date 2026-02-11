@@ -323,3 +323,92 @@ class TestIngestTable:
                     ingest_table(input_dir, "enrollment", [999], output_dir, file_ext=".parquet")
 
                 assert "Source file not found" in str(exc_info.value)
+
+
+class TestIntegrationFullPipeline:
+    """Integration tests for full discovery + ingestion pipeline."""
+
+    def test_smoke_test_full_pipeline(self, sample_parquet_dir):
+        """AC2.1, AC2.2: End-to-end test with discovery + ingestion."""
+        with tempfile.TemporaryDirectory() as output_dir:
+            output_dir = Path(output_dir)
+
+            # Discover subsamples
+            subsamples = discover_subsamples(sample_parquet_dir, file_ext=".parquet")
+            assert subsamples == [1, 2, 3], f"Expected [1, 2, 3], got {subsamples}"
+
+            # Ingest all
+            ingest_all(sample_parquet_dir, subsamples, output_dir, file_ext=".parquet")
+
+            # Verify all 27 temp parquet files exist (9 tables × 3 subsamples)
+            temp_dir = output_dir / "_temp"
+            assert temp_dir.exists(), "Temp directory not created"
+
+            expected_files = [
+                f"{table_name}_{samplenum}.parquet"
+                for table_name in TABLES.keys()
+                for samplenum in subsamples
+            ]
+
+            for filename in expected_files:
+                path = temp_dir / filename
+                assert path.exists(), f"Missing {filename}"
+
+            # Verify samplenum values in each file
+            for table_name in TABLES.keys():
+                for samplenum in subsamples:
+                    path = temp_dir / f"{table_name}_{samplenum}.parquet"
+                    df = pl.read_parquet(str(path))
+                    assert "samplenum" in df.columns
+                    assert df["samplenum"][0] == samplenum, (
+                        f"Wrong samplenum for {table_name}_{samplenum}"
+                    )
+
+    def test_integration_row_counts_match_fixtures(self, sample_parquet_dir):
+        """Verify row counts match input fixtures after ingestion."""
+        with tempfile.TemporaryDirectory() as output_dir:
+            output_dir = Path(output_dir)
+
+            # Discover and ingest
+            subsamples = discover_subsamples(sample_parquet_dir, file_ext=".parquet")
+            ingest_all(sample_parquet_dir, subsamples, output_dir, file_ext=".parquet")
+
+            # Verify row counts match
+            temp_dir = output_dir / "_temp"
+            for table_name in TABLES.keys():
+                for samplenum in subsamples:
+                    input_path = sample_parquet_dir / f"{table_name}_{samplenum}.parquet"
+                    output_path = temp_dir / f"{table_name}_{samplenum}.parquet"
+
+                    input_df = pl.read_parquet(str(input_path))
+                    output_df = pl.read_parquet(str(output_path))
+
+                    assert len(input_df) == len(output_df), (
+                        f"Row count mismatch for {table_name}_{samplenum}: "
+                        f"input={len(input_df)}, output={len(output_df)}"
+                    )
+
+    def test_integration_column_names_match_schema(self, sample_parquet_dir):
+        """Verify column names match schema definitions after ingestion."""
+        with tempfile.TemporaryDirectory() as output_dir:
+            output_dir = Path(output_dir)
+
+            # Discover and ingest
+            subsamples = discover_subsamples(sample_parquet_dir, file_ext=".parquet")
+            ingest_all(sample_parquet_dir, subsamples, output_dir, file_ext=".parquet")
+
+            # Verify columns match schema (plus samplenum)
+            temp_dir = output_dir / "_temp"
+            for table_name, table_def in TABLES.items():
+                for samplenum in subsamples:
+                    path = temp_dir / f"{table_name}_{samplenum}.parquet"
+                    df = pl.read_parquet(str(path))
+
+                    # Expected columns: schema columns + samplenum
+                    expected_cols = set(table_def.columns) | {"samplenum"}
+                    actual_cols = set(df.columns)
+
+                    assert actual_cols == expected_cols, (
+                        f"Column mismatch for {table_name}_{samplenum}: "
+                        f"expected {expected_cols}, got {actual_cols}"
+                    )
