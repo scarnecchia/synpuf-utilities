@@ -181,6 +181,7 @@ def ingest_all(
     output_dir: Path | str,
     file_ext: str = ".sas7bdat",
     chunk_size: int = 10000,
+    progress=None,
 ) -> None:
     """Ingest all 9 table types for given subsamples to temp parquet.
 
@@ -190,6 +191,9 @@ def ingest_all(
         output_dir: Directory where temp parquet files will be written
         file_ext: File extension (default: ".sas7bdat")
         chunk_size: Chunk size for SAS7BDAT reading (default: 10000)
+        progress: Optional progress tracker with update_description() and advance()
     """
     for table_name in TABLES.keys():
         ingest_table(input_dir, table_name, subsamples, output_dir, file_ext, chunk_size)
+        if progress:
+            progress.advance()

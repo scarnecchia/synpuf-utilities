@@ -77,7 +77,7 @@ def get_crosswalk(
     return con.sql(f"SELECT * FROM {crosswalk_name}").pl()
 
 
-def assemble_tables(con: duckdb.DuckDBPyConnection, temp_dir: Path | str) -> None:
+def assemble_tables(con: duckdb.DuckDBPyConnection, temp_dir: Path | str, progress=None) -> None:
     """Assemble all 9 SCDM output tables from ingested data and crosswalks.
 
     For each of the 7 data-derived tables (enrollment, demographic, dispensing,
@@ -92,6 +92,7 @@ def assemble_tables(con: duckdb.DuckDBPyConnection, temp_dir: Path | str) -> Non
     Args:
         con: DuckDB connection
         temp_dir: Directory containing ingested parquet files
+        progress: Optional progress tracker with update_description() and advance()
     """
     temp_dir = Path(temp_dir)
 
@@ -103,6 +104,8 @@ def assemble_tables(con: duckdb.DuckDBPyConnection, temp_dir: Path | str) -> Non
     }
 
     for table_name, table_def in data_derived_tables.items():
+        if progress:
+            progress.update_description(f"Transforming {table_name}")
         # Check if the source table exists
         matching_files = list(Path(temp_dir).glob(f"{table_name}_*.parquet"))
         if not matching_files:
@@ -178,6 +181,11 @@ def assemble_tables(con: duckdb.DuckDBPyConnection, temp_dir: Path | str) -> Non
         """
 
         con.execute(sql)
+        if progress:
+            progress.advance()
+
+    # Synthesise provider and facility tables (always done, progress handled above)
+    synthesise_tables(con)
 
 
 def synthesise_tables(con: duckdb.DuckDBPyConnection) -> None:

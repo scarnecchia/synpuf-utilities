@@ -91,6 +91,7 @@ def export_all(
     table_names: list[str],
     output_dir: str | Path,
     fmt: str,
+    progress=None,
 ) -> None:
     """Export multiple tables to the specified format.
 
@@ -99,6 +100,11 @@ def export_all(
         table_names: List of table names to export
         output_dir: Output directory path
         fmt: Output format ("parquet", "csv", or "json")
+        progress: Optional progress tracker with update_description() and advance()
     """
     for table_name in table_names:
+        if progress:
+            progress.update_description(f"Exporting {table_name}")
         export_table(con, table_name, output_dir, fmt)
+        if progress:
+            progress.advance()
