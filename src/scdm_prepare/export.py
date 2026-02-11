@@ -3,7 +3,6 @@
 from pathlib import Path
 
 import duckdb
-import polars as pl
 
 
 def export_table(
@@ -68,32 +67,23 @@ def _export_ndjson(
     con: duckdb.DuckDBPyConnection,
     table_name: str,
     output_dir: Path,
-    batch_size: int = 100_000,
 ) -> None:
-    """Export table to NDJSON format using batched reading.
+    """Export table to NDJSON format using DuckDB COPY TO.
 
-    polars write_ndjson() does not support append mode, so we use DuckDB's
-    fetch_arrow_reader() to stream data in batches and write manually.
+    DuckDB's COPY TO with FORMAT json produces NDJSON (newline-delimited JSON)
+    format where each line is a valid JSON object.
 
     Args:
         con: DuckDB connection
         table_name: Name of the table to export
         output_dir: Output directory path
-        batch_size: Number of rows per batch
     """
     output_path = output_dir / f"{table_name}.json"
-
-    result = con.execute(f"SELECT * FROM {table_name}")
-    reader = result.fetch_arrow_reader(batch_size=batch_size)
-
-    with open(output_path, "w") as f:
-        while True:
-            try:
-                batch = reader.read_next_batch()
-            except StopIteration:
-                break
-            df = pl.from_arrow(batch)
-            f.write(df.write_ndjson())
+    con.execute(f"""
+        COPY {table_name}
+        TO '{output_path}'
+        (FORMAT json)
+    """)
 
 
 def export_all(

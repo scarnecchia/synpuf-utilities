@@ -225,3 +225,168 @@ class TestExportCSV:
             assert len(result_df) == 3
             # Dates are read as strings from CSV
             assert result_df["date"][0] == "2020-01-15"
+
+
+class TestExportNDJSON:
+    """Tests for NDJSON export (AC7.3, AC7.4)."""
+
+    def test_ac73_ndjson_export_creates_readable_file(self, duckdb_con):
+        """AC7.3: Exported NDJSON file is readable with valid JSON per line."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+
+            # Create a simple table in DuckDB
+            data = {
+                "PatID": [1, 2, 3],
+                "Name": ["Alice", "Bob", "Charlie"],
+                "Amount": [100, 200, 300],
+            }
+            df = pl.DataFrame(data)
+            duckdb_con.register("ndjson_table", df)
+
+            # Export to NDJSON
+            export_table(duckdb_con, "ndjson_table", tmpdir, "json")
+
+            # Verify file exists
+            output_file = tmpdir / "ndjson_table.json"
+            assert output_file.exists()
+
+            # Verify each line is valid JSON
+            lines = output_file.read_text().strip().split("\n")
+            assert len(lines) == 3
+
+            records = []
+            for line in lines:
+                record = json.loads(line)
+                records.append(record)
+
+            # Verify data matches
+            assert records[0]["PatID"] == 1
+            assert records[1]["PatID"] == 2
+            assert records[2]["PatID"] == 3
+            assert records[0]["Name"] == "Alice"
+            assert records[1]["Name"] == "Bob"
+
+    def test_ac73_ndjson_with_mixed_types(self, duckdb_con):
+        """AC7.3: NDJSON export handles mixed column types correctly."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+
+            # Create table with various types
+            data = {
+                "id": [1, 2],
+                "name": ["Alice", "Bob"],
+                "birth_date": [
+                    datetime.date(1990, 1, 15),
+                    datetime.date(1985, 3, 20),
+                ],
+                "amount": [100.5, 200.75],
+                "active": [True, False],
+            }
+            df = pl.DataFrame(data)
+            duckdb_con.register("ndjson_mixed", df)
+
+            # Export to NDJSON
+            export_table(duckdb_con, "ndjson_mixed", tmpdir, "json")
+
+            # Verify each line is valid JSON
+            output_file = tmpdir / "ndjson_mixed.json"
+            lines = output_file.read_text().strip().split("\n")
+
+            record = json.loads(lines[0])
+            assert record["id"] == 1
+            assert record["name"] == "Alice"
+            assert record["amount"] == 100.5
+            assert record["active"] is True
+
+    def test_ac74_ndjson_file_naming(self, duckdb_con):
+        """AC7.4: NDJSON file is named {table}.json."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+
+            df = pl.DataFrame({"col1": [1, 2]})
+            duckdb_con.register("my_ndjson_table", df)
+
+            export_table(duckdb_con, "my_ndjson_table", tmpdir, "json")
+
+            output_file = tmpdir / "my_ndjson_table.json"
+            assert output_file.exists()
+            assert output_file.name == "my_ndjson_table.json"
+
+    def test_ndjson_export_with_nulls(self, duckdb_con):
+        """NDJSON export handles NULL values correctly."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+
+            data = {
+                "id": [1, 2, None],
+                "name": ["Alice", None, "Charlie"],
+                "amount": [100.5, None, 300.25],
+            }
+            df = pl.DataFrame(data)
+            duckdb_con.register("ndjson_null", df)
+
+            export_table(duckdb_con, "ndjson_null", tmpdir, "json")
+
+            output_file = tmpdir / "ndjson_null.json"
+            lines = output_file.read_text().strip().split("\n")
+
+            records = [json.loads(line) for line in lines]
+
+            # Verify NULL values are represented as null in JSON
+            assert records[2]["id"] is None
+            assert records[1]["name"] is None
+            assert records[1]["amount"] is None
+
+    def test_ndjson_large_batch_handling(self, duckdb_con):
+        """NDJSON export correctly handles multiple batches."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+
+            # Create a larger table that requires multiple batches
+            # Using batch_size=100 in export_table (default 100_000)
+            data = {
+                "id": list(range(250)),
+                "value": [f"val_{i}" for i in range(250)],
+            }
+            df = pl.DataFrame(data)
+            duckdb_con.register("ndjson_large", df)
+
+            export_table(duckdb_con, "ndjson_large", tmpdir, "json")
+
+            output_file = tmpdir / "ndjson_large.json"
+            lines = output_file.read_text().strip().split("\n")
+
+            assert len(lines) == 250
+
+            # Verify all lines are valid JSON and data matches
+            records = [json.loads(line) for line in lines]
+            for i, record in enumerate(records):
+                assert record["id"] == i
+                assert record["value"] == f"val_{i}"
+
+    def test_ndjson_roundtrip_with_polars(self, duckdb_con):
+        """NDJSON export can be read back with polars.read_ndjson()."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+
+            # Create original data
+            original_data = {
+                "id": [1, 2, 3],
+                "name": ["Alice", "Bob", "Charlie"],
+                "score": [95.5, 87.3, 92.1],
+            }
+            df = pl.DataFrame(original_data)
+            duckdb_con.register("roundtrip_table", df)
+
+            # Export to NDJSON
+            export_table(duckdb_con, "roundtrip_table", tmpdir, "json")
+
+            # Read back with polars
+            output_file = tmpdir / "roundtrip_table.json"
+            result_df = pl.read_ndjson(str(output_file))
+
+            # Verify data matches
+            assert len(result_df) == 3
+            assert result_df["id"].to_list() == [1, 2, 3]
+            assert result_df["name"].to_list() == ["Alice", "Bob", "Charlie"]
