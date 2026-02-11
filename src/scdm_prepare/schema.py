@@ -2,6 +2,15 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
+class CrosswalkDef:
+    """Definition of a crosswalk for ID mapping across subsamples."""
+
+    id_column: str
+    source_tables: tuple[str, ...]
+    crosswalk_name: str
+
+
+@dataclass(frozen=True)
 class TableDef:
     """Definition of a SCDM table schema."""
 
@@ -116,6 +125,29 @@ TABLES = {
         columns=("FacilityID", "Facility_Location"),
         sort_keys=("FacilityID",),
         crosswalk_ids={},
+    ),
+}
+
+CROSSWALKS = {
+    "patid": CrosswalkDef(
+        id_column="PatID",
+        source_tables=("demographic",),
+        crosswalk_name="patid_crosswalk",
+    ),
+    "encounterid": CrosswalkDef(
+        id_column="EncounterID",
+        source_tables=("encounter",),
+        crosswalk_name="encounterid_crosswalk",
+    ),
+    "providerid": CrosswalkDef(
+        id_column="ProviderID",
+        source_tables=("provider",),
+        crosswalk_name="providerid_crosswalk",
+    ),
+    "facilityid": CrosswalkDef(
+        id_column="FacilityID",
+        source_tables=("facility",),
+        crosswalk_name="facilityid_crosswalk",
     ),
 }
 
