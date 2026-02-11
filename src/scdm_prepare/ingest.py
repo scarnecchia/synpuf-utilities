@@ -151,16 +151,19 @@ def ingest_table(
             df = pl.read_parquet(str(source_path))
             df = df.with_columns(pl.lit(samplenum).alias("samplenum"))
         else:
-            # For SAS7BDAT: read in chunks
+            # For SAS7BDAT: read in chunks with error handling
             chunks = []
-            for chunk_df in pyreadstat.read_file_in_chunks(
-                pyreadstat.read_sas7bdat, str(source_path), chunksize=chunk_size
-            ):
-                # chunk_df is a pandas DataFrame
-                # Convert to polars and inject samplenum
-                chunk_pl = pl.from_pandas(chunk_df)
-                chunk_pl = chunk_pl.with_columns(pl.lit(samplenum).alias("samplenum"))
-                chunks.append(chunk_pl)
+            try:
+                for chunk_df in pyreadstat.read_file_in_chunks(
+                    pyreadstat.read_sas7bdat, str(source_path), chunksize=chunk_size
+                ):
+                    # chunk_df is a pandas DataFrame
+                    # Convert to polars and inject samplenum
+                    chunk_pl = pl.from_pandas(chunk_df)
+                    chunk_pl = chunk_pl.with_columns(pl.lit(samplenum).alias("samplenum"))
+                    chunks.append(chunk_pl)
+            except Exception as e:
+                raise RuntimeError(f"Failed to read {source_path}: {e}") from e
 
             # Concatenate all chunks
             if chunks:

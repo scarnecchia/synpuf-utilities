@@ -139,6 +139,32 @@ class TestCLIErrorHandling:
             )
             assert result.exit_code != 0
 
+    def test_ac104_corrupt_sas7bdat_file(self):
+        """AC10.4: Corrupt SAS7BDAT file reports specific filename."""
+        with tempfile.TemporaryDirectory() as input_dir:
+            with tempfile.TemporaryDirectory() as output_dir:
+                from scdm_prepare.schema import TABLES
+
+                # Create valid files for subsample 1
+                for table_name in TABLES.keys():
+                    (Path(input_dir) / f"{table_name}_1.sas7bdat").write_bytes(b"corrupt data")
+
+                result = runner.invoke(
+                    app,
+                    [
+                        "--input",
+                        input_dir,
+                        "--output",
+                        output_dir,
+                        "--format",
+                        "parquet",
+                    ],
+                )
+                # Should fail due to corrupt file
+                assert result.exit_code != 0
+                # Error message should mention the specific file that failed
+                assert "Failed to read" in result.stdout or "Failed to read" in result.stderr or ".sas7bdat" in str(result.exception)
+
 
 class TestCLIProgressReporting:
     """Tests for AC9.1, AC9.2 - progress reporting."""
