@@ -343,8 +343,7 @@ class TestExportNDJSON:
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir = Path(tmpdir)
 
-            # Create a larger table that requires multiple batches
-            # Using batch_size=100 in export_table (default 100_000)
+            # Create a larger dataset to exercise the export path
             data = {
                 "id": list(range(250)),
                 "value": [f"val_{i}" for i in range(250)],
