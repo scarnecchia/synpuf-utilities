@@ -29,3 +29,4 @@ env/
 *~
 .idea/
 .vscode/
+.worktrees/
